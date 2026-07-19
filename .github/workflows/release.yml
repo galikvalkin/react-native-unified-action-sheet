@@ -1,0 +1,73 @@
+name: Release
+
+# Publishes to npm when a version tag (v1.2.3) is pushed. The tag must match
+# package.json's version. Authentication is npm trusted publishing: the job
+# proves its identity with the workflow's own OIDC token (id-token: write), so
+# there is no NPM_TOKEN secret to store or rotate. The trusted publisher — this
+# repo plus this workflow file — is configured on the package's npmjs.com
+# settings page, which requires the package to already exist there, so the very
+# first version has to be published manually. Provenance is attached
+# automatically for a public package built from a public repo.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # npm trusted publishing (OIDC) + provenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "v$PKG_VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version v$PKG_VERSION" >&2
+            exit 1
+          fi
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Test
+        run: yarn test
+
+      - name: Build package
+        run: yarn prepare
+
+      - name: Point npm at the public registry
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs npm >= 11.5.1, which the npm bundled with the
+      # .nvmrc Node release is not guaranteed to be.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      # No NODE_AUTH_TOKEN: the OIDC exchange authenticates this, and it also
+      # attaches provenance without the --provenance flag.
+      - name: Publish to npm
+        run: npm publish --access public
+
+      - name: Create GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,32 @@
+buildscript {
+    ext {
+        buildToolsVersion = "36.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 36
+        targetSdkVersion = 36
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.1.20"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+apply plugin: "com.facebook.react.rootproject"
+
+// The library project dir (../../android) is shared with the RN 0.85 example
+// app. Redirect its build outputs here so the two apps' codegen artifacts
+// (different RN versions) never clobber each other.
+subprojects { subproject ->
+    if (subproject.name == 'react-native-unified-action-sheet') {
+        subproject.layout.buildDirectory.set(
+            new File(rootProject.projectDir, "build/${subproject.name}")
+        )
+    }
+}

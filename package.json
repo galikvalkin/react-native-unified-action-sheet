@@ -1,0 +1,155 @@
+{
+  "name": "react-native-unified-action-sheet",
+  "version": "0.1.0",
+  "description": "Unified action sheet for React Native: a native UIAlertController on iOS, a native AppCompatDialog on Android",
+  "main": "./lib/commonjs/index.js",
+  "sideEffects": false,
+  "types": "./lib/typescript/commonjs/src/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native-unified-action-sheet-source": "./src/index.tsx",
+      "import": {
+        "types": "./lib/typescript/module/src/index.d.ts",
+        "default": "./lib/module/index.js"
+      },
+      "require": {
+        "types": "./lib/typescript/commonjs/src/index.d.ts",
+        "default": "./lib/commonjs/index.js"
+      }
+    },
+    "./package.json": "./package.json",
+    "./jest": {
+      "types": "./jest/index.d.ts",
+      "default": "./jest/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "lib",
+    "jest",
+    "android",
+    "ios",
+    "*.podspec",
+    "CHANGELOG.md",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "example": "yarn workspace react-native-unified-action-sheet-example",
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "prepare": "bob build",
+    "typecheck": "tsc",
+    "test": "jest",
+    "lint": "eslint \"**/*.{js,ts,tsx}\""
+  },
+  "keywords": [
+    "react-native",
+    "ios",
+    "android",
+    "action-sheet",
+    "actionsheet",
+    "action-sheet-ios",
+    "turbomodule"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/galikvalkin/react-native-unified-action-sheet.git"
+  },
+  "author": "Valentyn Halkin <galikvalkin@gmail.com> (https://github.com/galikvalkin)",
+  "license": "MIT",
+  "engines": {
+    "node": ">= 18"
+  },
+  "bugs": {
+    "url": "https://github.com/galikvalkin/react-native-unified-action-sheet/issues"
+  },
+  "homepage": "https://github.com/galikvalkin/react-native-unified-action-sheet#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.1.0",
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^10.0.1",
+    "@jest/globals": "^30.4.1",
+    "@react-native/babel-preset": "0.85.0",
+    "@react-native/eslint-config": "0.85.0",
+    "@types/react": "^19.2.0",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-ft-flow": "^3.0.11",
+    "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^30.4.2",
+    "prettier": "^3.8.3",
+    "react": "19.2.3",
+    "react-native": "0.85.0",
+    "react-native-builder-bob": "^0.43.0",
+    "react-native-modal": "^14.0.0-rc.1",
+    "turbo": "^2.9.16",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": ">=0.81.0"
+  },
+  "workspaces": [
+    "example"
+  ],
+  "packageManager": "yarn@4.11.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "commonjs",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "codegenConfig": {
+    "name": "UnifiedActionSheetSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.unifiedactionsheet"
+    }
+  },
+  "prettier": {
+    "quoteProps": "consistent",
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "useTabs": false
+  },
+  "create-react-native-library": {
+    "type": "turbo-module",
+    "languages": "kotlin-objc",
+    "tools": [
+      "eslint"
+    ],
+    "version": "0.63.0"
+  },
+  "module": "./lib/module/index.js"
+}
