@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Added
+
+- `showPromptWithOptions(options)` — the same native dialog as the action sheet,
+  with a text field. React Native's own `Alert.prompt` is iOS-only and silently
+  does nothing on Android, so this is the one API here with no core equivalent.
+  Resolves `{ buttonIndex, text }`, or `undefined` after `dismissActionSheet()`.
+- Prompt button handlers receive the field's text. It is read when the prompt
+  closes, including on a dismissal, so a draft is recoverable rather than lost.
+- Prompt options: `placeholder`, `defaultValue`, `secureTextEntry` and
+  `keyboardType` (`'default' | 'email-address' | 'numeric' | 'phone-pad' |
+  'url'`). Buttons keep the sheet's `style`, `disabled` and `onPress`.
+- `setNextPromptResult({ buttonIndex, text })` in the shipped Jest mock, the
+  prompt counterpart to `setNextButtonIndex()`.
+- Exported types: `PromptButtonInterface`, `PromptCommonOptionsInterface`,
+  `PromptAndroidOptionsInterface`, `PromptOptionsInterface`,
+  `PromptResultInterface`, plus the shared `BaseButtonInterface`,
+  `BaseOptionsInterface` and `BaseAndroidOptionsInterface`.
+
+### Changed
+
+- The options and button fields the sheet and the prompt share are now declared
+  once, in `BaseOptionsInterface` / `BaseButtonInterface`, which both APIs
+  extend. No public type changed shape.
+
+### Notes
+
+- A prompt is always presented centered. UIKit has no text field in an action
+  sheet, so `presentationStyle` and `anchor` do not apply to one.
+- `dismissActionSheet()` and `dismissAllActionSheets()` close prompts too.
+
 ## [0.1.1]
 
 No user-facing changes — the library is identical to 0.1.0. Republished from CI
@@ -43,6 +75,7 @@ Initial release.
 - No `com.google.android.material` dependency, and no runtime dependencies —
   `react` and `react-native` are peers.
 
-[unreleased]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.1...HEAD
+[unreleased]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/releases/tag/v0.1.0
