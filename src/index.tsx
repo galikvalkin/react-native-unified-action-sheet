@@ -4,12 +4,19 @@ import type { Spec } from './NativeUnifiedActionSheet';
 import type { ActionSheetOptionsInterface } from './action-sheet-options.interface';
 
 export type {
+  BaseButtonInterface,
+  BaseOptionsInterface,
+  BaseAndroidOptionsInterface,
+} from './common-options.interface';
+
+export type {
   PromptButtonInterface,
   PromptCommonOptionsInterface,
   PromptAndroidOptionsInterface,
   PromptOptionsInterface,
   PromptResultInterface,
 } from './prompt-options.interface';
+import type { BaseButtonInterface } from './common-options.interface';
 import type {
   PromptOptionsInterface,
   PromptResultInterface,
@@ -60,13 +67,7 @@ type WirePromptOptions = Omit<PromptOptionsInterface, 'options'> & {
 
 /// Same flattening as the sheet: labels plus index sets. Kept generic over the
 /// button shape so the two APIs cannot disagree about what 'cancel' means.
-const toWireButtons = (
-  buttons: ReadonlyArray<{
-    label: string;
-    style?: 'cancel' | 'destructive';
-    disabled?: boolean;
-  }>
-) => {
+const toWireButtons = (buttons: ReadonlyArray<BaseButtonInterface>) => {
   const labels: string[] = [];
   const destructive: number[] = [];
   const disabled: number[] = [];
