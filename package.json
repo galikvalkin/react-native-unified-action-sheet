@@ -1,6 +1,6 @@
 {
   "name": "react-native-unified-action-sheet",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Unified action sheet for React Native: a native UIAlertController on iOS, a native AppCompatDialog on Android",
   "main": "./lib/commonjs/index.js",
   "sideEffects": false,
