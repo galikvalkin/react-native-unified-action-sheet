@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1]
+
+No user-facing changes — the library is identical to 0.1.0. Republished from CI
+so the release carries npm provenance; 0.1.0 was published by hand, because npm
+only lets a trusted publisher be configured on a package that already exists.
+
 ## [0.1.0]
 
 Initial release.
@@ -37,5 +43,6 @@ Initial release.
 - No `com.google.android.material` dependency, and no runtime dependencies —
   `react` and `react-native` are peers.
 
-[unreleased]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/releases/tag/v0.1.0

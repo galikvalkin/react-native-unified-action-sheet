@@ -57,10 +57,20 @@ jobs:
           node-version-file: .nvmrc
           registry-url: 'https://registry.npmjs.org'
 
-      # Trusted publishing needs npm >= 11.5.1, which the npm bundled with the
-      # .nvmrc Node release is not guaranteed to be.
-      - name: Upgrade npm
-        run: npm install -g npm@latest
+      # Trusted publishing needs npm >= 11.5.1. The npm bundled with the .nvmrc
+      # Node release already satisfies that, so nothing is installed here --
+      # `npm install -g npm@latest` would pull whatever major is current and can
+      # demand a newer Node than .nvmrc pins. Assert instead, so a future drift
+      # fails here with a clear message rather than at the publish step.
+      - name: Verify npm supports trusted publishing
+        run: |
+          MIN=11.5.1
+          HAVE="$(npm -v)"
+          if [ "$(printf '%s\n%s\n' "$MIN" "$HAVE" | sort -V | head -1)" != "$MIN" ]; then
+            echo "::error::npm $HAVE is older than $MIN, which trusted publishing requires. Bump .nvmrc to a Node release bundling a newer npm."
+            exit 1
+          fi
+          echo "npm $HAVE satisfies >= $MIN"
 
       # No NODE_AUTH_TOKEN: the OIDC exchange authenticates this, and it also
       # attaches provenance without the --provenance flag.
