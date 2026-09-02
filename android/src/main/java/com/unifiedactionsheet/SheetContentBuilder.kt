@@ -6,9 +6,11 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
@@ -22,6 +24,8 @@ internal fun buildContent(
   options: ActionSheetOptions,
   palette: SheetPalette,
   includeCancelRow: Boolean = true,
+  /// Sits between the message and the rows. Only the prompt supplies one.
+  inputView: View? = null,
   onSelect: (Int) -> Unit,
 ): LinearLayout {
   val container = LinearLayout(context).apply {
@@ -35,6 +39,8 @@ internal fun buildContent(
   options.message?.takeIf { it.isNotBlank() }?.let {
     container.addView(buildHeader(context, it, palette.secondaryText, isTitle = false))
   }
+
+  inputView?.let(container::addView)
 
   val centerLabels = options.buttonTextAlignment == ButtonTextAlignment.CENTER
 
@@ -94,6 +100,31 @@ internal fun buildContent(
   container.addView(scroll)
 
   return container
+}
+
+internal fun buildPromptInput(
+  context: Context,
+  options: PromptOptions,
+  palette: SheetPalette,
+): EditText = AppCompatEditText(context).apply {
+  setText(options.defaultValue.orEmpty())
+  hint = options.placeholder
+  setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+  setTextColor(palette.primaryText)
+  setHintTextColor(ColorUtils.setAlphaComponent(palette.secondaryText, DISABLED_TEXT_ALPHA))
+  setPadding(dp(context, 16), dp(context, 8), dp(context, 16), dp(context, 8))
+  isSingleLine = true
+  // After isSingleLine, never before: setSingleLine() installs
+  // SingleLineTransformationMethod, which replaces the password masking that
+  // setInputType() sets up. Ordering them the other way renders a secure field
+  // in plain text while still reporting a password input type.
+  inputType = options.keyboardType.toInputType(options.secureTextEntry)
+  // Land the caret after any default value rather than before it.
+  setSelection(text?.length ?: 0)
+  layoutParams = LinearLayout.LayoutParams(
+    LinearLayout.LayoutParams.MATCH_PARENT,
+    LinearLayout.LayoutParams.WRAP_CONTENT,
+  )
 }
 
 private fun buildHeader(

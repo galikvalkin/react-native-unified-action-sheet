@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import type { ComponentRef } from 'react';
+import { Children, forwardRef, useMemo, useRef, useState } from 'react';
+import type { ComponentRef, ReactNode } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -13,6 +13,7 @@ import {
   dismissActionSheet,
   dismissAllActionSheets,
   showActionSheetWithOptions,
+  showPromptWithOptions,
 } from 'react-native-unified-action-sheet';
 
 import type { ActionSheetOptionsInterface } from 'react-native-unified-action-sheet';
@@ -101,6 +102,56 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
     },
   ];
 };
+
+const Section = ({
+  title,
+  defaultExpanded = false,
+  children,
+}: {
+  title: string;
+  defaultExpanded?: boolean;
+  children: ReactNode;
+}) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const count = Children.count(children);
+
+  return (
+    <View style={styles.section}>
+      <Pressable
+        style={styles.sectionHeader}
+        onPress={() => setExpanded((open) => !open)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${title}, ${count} cases`}
+      >
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionMeta}>
+          {expanded ? '\u25be' : `${count}  \u25b8`}
+        </Text>
+      </Pressable>
+      {/* Unmounted rather than hidden while collapsed. The anchored case
+          measures its own button's ref, and a ref to an off-screen view would
+          report a zero rect rather than simply being unavailable. */}
+      {expanded ? children : null}
+    </View>
+  );
+};
+
+/// forwardRef, because the anchored case measures this button's own ref.
+const DemoButton = forwardRef<
+  ComponentRef<typeof Pressable>,
+  { label: string; onPress: () => void; tone?: 'alt' }
+>(({ label, onPress, tone }, ref) => (
+  <Pressable
+    ref={ref}
+    style={[styles.button, tone === 'alt' && styles.altButton]}
+    onPress={onPress}
+  >
+    <Text style={styles.buttonText}>{label}</Text>
+  </Pressable>
+));
+
+DemoButton.displayName = 'DemoButton';
 
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -207,6 +258,55 @@ export default function ActionSheetDemoApp() {
     }
   };
 
+  const showPrompt = async () => {
+    // The gap this fills: React Native's own Alert.prompt is iOS-only and does
+    // nothing at all on Android.
+    const result = await showPromptWithOptions({
+      title: 'Rename item',
+      message: 'Type a new name.',
+      placeholder: 'New name',
+      defaultValue: 'Untitled',
+      options: [
+        {
+          label: 'Save',
+          onPress: (text) => setLastResult(`Prompt → saved “${text}”`),
+        },
+        {
+          label: 'Delete',
+          style: 'destructive',
+          onPress: () => setLastResult('Prompt → Delete'),
+        },
+        {
+          label: 'Cancel',
+          style: 'cancel',
+          onPress: (text) =>
+            setLastResult(`Prompt → cancelled, draft was “${text}”`),
+        },
+      ],
+    });
+
+    if (result === undefined) setLastResult('Prompt → dismissed from code');
+  };
+
+  const showSecurePrompt = async () => {
+    const result = await showPromptWithOptions({
+      title: 'Enter passcode',
+      placeholder: 'Passcode',
+      secureTextEntry: true,
+      keyboardType: 'numeric',
+      options: [
+        {
+          label: 'Unlock',
+          onPress: (text) =>
+            setLastResult(`Secure prompt → ${text.length} digits entered`),
+        },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
+
+    if (result === undefined) setLastResult('Secure prompt → dismissed');
+  };
+
   const showFromModal = async () => {
     // react-native-modal renders in its own window, above the activity. The
     // sheet is a dialog owned by the activity, so this is where a z-order bug
@@ -238,52 +338,72 @@ export default function ActionSheetDemoApp() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      {/* Outside the ScrollView so the result of whatever you just tapped
+          stays visible instead of scrolling away with the buttons. */}
+      <View style={styles.header}>
         <Text style={styles.heading}>Unified Action Sheet</Text>
-        <Text style={styles.result}>Last result: {lastResult}</Text>
-        {demoCases.map((demo) => (
-          <Pressable
-            key={demo.label}
-            style={styles.button}
-            onPress={() => show(demo)}
-          >
-            <Text style={styles.buttonText}>{demo.label}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          style={[styles.button, styles.altButton]}
-          onPress={showTwice}
-        >
-          <Text style={styles.buttonText}>Rapid double-open</Text>
-        </Pressable>
-        <Pressable
-          ref={anchorRef}
-          style={[styles.button, styles.altButton]}
-          onPress={showAnchored}
-        >
-          <Text style={styles.buttonText}>Anchored to this button</Text>
-        </Pressable>
+        <Text style={styles.result} numberOfLines={2}>
+          {lastResult}
+        </Text>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Section title="Sheets" defaultExpanded>
+          {demoCases.map((demo) => (
+            <DemoButton
+              key={demo.label}
+              label={demo.label}
+              onPress={() => show(demo)}
+            />
+          ))}
+        </Section>
 
-        <Pressable
-          style={[styles.button, styles.altButton]}
-          onPress={showTwoAndDismissAll}
-        >
-          <Text style={styles.buttonText}>Open two, then dismiss all</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, styles.altButton]}
-          onPress={showAndDismiss}
-        >
-          <Text style={styles.buttonText}>
-            Open then dismiss programmatically
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, styles.altButton]}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={styles.buttonText}>Open a react-native-modal</Text>
-        </Pressable>
+        <Section title="Prompts">
+          <DemoButton
+            label="Prompt with a text field"
+            onPress={showPrompt}
+            tone="alt"
+          />
+          <DemoButton
+            label="Secure numeric prompt"
+            onPress={showSecurePrompt}
+            tone="alt"
+          />
+        </Section>
+
+        <Section title="Anchoring">
+          <DemoButton
+            ref={anchorRef}
+            label="Anchored to this button"
+            onPress={showAnchored}
+            tone="alt"
+          />
+        </Section>
+
+        <Section title="Stacking and dismissal">
+          <DemoButton
+            label="Rapid double-open"
+            onPress={showTwice}
+            tone="alt"
+          />
+          <DemoButton
+            label="Open two, then dismiss all"
+            onPress={showTwoAndDismissAll}
+            tone="alt"
+          />
+          <DemoButton
+            label="Open then dismiss programmatically"
+            onPress={showAndDismiss}
+            tone="alt"
+          />
+        </Section>
+
+        <Section title="Interop">
+          <DemoButton
+            label="Open a react-native-modal"
+            onPress={() => setModalVisible(true)}
+            tone="alt"
+          />
+        </Section>
       </ScrollView>
       <Modal
         useNativeDriver
@@ -316,24 +436,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#00000022',
+    gap: 4,
+  },
   content: {
     padding: 16,
-    gap: 12,
+    paddingBottom: 32,
+    gap: 20,
   },
   heading: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     textAlign: 'center',
   },
   result: {
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 8,
+    opacity: 0.7,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  sectionMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.45,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    opacity: 0.45,
   },
   button: {
     backgroundColor: '#6200EE',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 11,
     paddingHorizontal: 16,
   },
   altButton: {
@@ -341,7 +491,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     textAlign: 'center',
   },
   modalCard: {

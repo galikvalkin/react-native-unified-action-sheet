@@ -16,6 +16,11 @@
  *
  * Prefer that over mockResolvedValueOnce, which replaces the implementation and
  * so skips onPress.
+ *
+ * A prompt is queued the same way, with the text the field should resolve with:
+ *
+ *   setNextPromptResult({ buttonIndex: 0, text: 'typed' });
+ *   await openThePrompt();
  */
 let nextButtonIndex;
 
@@ -35,12 +40,35 @@ const showActionSheetWithOptions = jest.fn((options) => {
   return Promise.resolve(buttonIndex);
 });
 
+let nextPromptResult;
+
+const setNextPromptResult = (result) => {
+  nextPromptResult = result;
+};
+
+const showPromptWithOptions = jest.fn((options) => {
+  const result = nextPromptResult;
+  nextPromptResult = undefined;
+
+  if (result) {
+    const button =
+      options && options.options && options.options[result.buttonIndex];
+    if (button && typeof button.onPress === 'function') {
+      button.onPress(result.text);
+    }
+  }
+
+  return Promise.resolve(result);
+});
+
 const dismissActionSheet = jest.fn();
 const dismissAllActionSheets = jest.fn();
 
 module.exports = {
   setNextButtonIndex,
+  setNextPromptResult,
   showActionSheetWithOptions,
+  showPromptWithOptions,
   dismissActionSheet,
   dismissAllActionSheets,
 };

@@ -5,6 +5,10 @@ type Mock = {
   showActionSheetWithOptions: (options: {
     options: { label: string; onPress?: () => void }[];
   }) => Promise<number | undefined>;
+  setNextPromptResult: (result?: { buttonIndex: number; text: string }) => void;
+  showPromptWithOptions: (options: {
+    options: { label: string; onPress?: (text: string) => void }[];
+  }) => Promise<{ buttonIndex: number; text: string } | undefined>;
   dismissActionSheet: { (): void; mock: { calls: unknown[] } };
   dismissAllActionSheets: { (): void; mock: { calls: unknown[] } };
 };
@@ -47,5 +51,20 @@ describe('the shipped jest mock', () => {
 
     expect(mock.dismissActionSheet.mock.calls.length).toBeGreaterThan(0);
     expect(mock.dismissAllActionSheets.mock.calls.length).toBeGreaterThan(0);
+  });
+  it('queues a prompt result and passes the text to onPress', async () => {
+    const onPress = jest.fn();
+    mock.setNextPromptResult({ buttonIndex: 0, text: 'typed' });
+
+    await expect(
+      mock.showPromptWithOptions({ options: [{ label: 'OK', onPress }] })
+    ).resolves.toEqual({ buttonIndex: 0, text: 'typed' });
+    expect(onPress).toHaveBeenCalledWith('typed');
+  });
+
+  it('resolves a prompt with no selection by default', async () => {
+    await expect(
+      mock.showPromptWithOptions({ options: [{ label: 'OK' }] })
+    ).resolves.toBeUndefined();
   });
 });

@@ -83,6 +83,60 @@ internal object CenteredDialogPresenter : SheetPresenter {
   }
 }
 
+/// The centered dialog with a text field above the buttons. Deliberately not a
+/// SheetPresenter: it takes PromptOptions and hands the field's text back with
+/// the index, which the sheet interface has no place for.
+internal fun buildPromptDialog(
+  activity: Activity,
+  options: PromptOptions,
+  onSelect: (Dialog, Int, String) -> Unit,
+): Pair<Dialog, () -> String> {
+  val isDark = isDarkAppearance(activity, options.userInterfaceStyle)
+  val palette = paletteFor(isDark)
+  val dialog = AppCompatDialog(activity, dialogTheme(isDark))
+  dialog.supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
+
+  val context: Context = dialog.context
+  val input = buildPromptInput(context, options, palette)
+  val currentText = { input.text?.toString().orEmpty() }
+
+  val container = buildContent(
+    context = context,
+    options = options.toSheetOptions(),
+    palette = palette,
+    inputView = input,
+  ) { index -> onSelect(dialog, index, currentText()) }
+
+  dialog.setContentView(container)
+  dialog.setCanceledOnTouchOutside(true)
+
+  val background = GradientDrawable().apply {
+    cornerRadius = dp(context, PROMPT_CORNER_RADIUS_DP).toFloat()
+    setColor(palette.surface)
+  }
+  dialog.window?.setBackgroundDrawable(background)
+  container.background = background.constantState?.newDrawable() ?: background
+  container.clipToOutline = true
+
+  val metrics = context.resources.displayMetrics
+  val width = (metrics.widthPixels - 2 * dp(context, PROMPT_MARGIN_DP))
+    .coerceAtMost(dp(context, PROMPT_MAX_WIDTH_DP))
+    .coerceAtLeast(minOf(dp(context, PROMPT_MIN_WIDTH_DP), metrics.widthPixels))
+  dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
+
+  // A prompt exists to be typed into, so raise the keyboard with it rather than
+  // making the user tap the field first.
+  dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+  input.requestFocus()
+
+  return dialog to currentText
+}
+
+private const val PROMPT_CORNER_RADIUS_DP = 28
+private const val PROMPT_MARGIN_DP = 24
+private const val PROMPT_MIN_WIDTH_DP = 280
+private const val PROMPT_MAX_WIDTH_DP = 560
+
 internal class AnchoredDialogPresenter(private val anchorRect: Rect) : SheetPresenter {
   override fun build(
     activity: Activity,
