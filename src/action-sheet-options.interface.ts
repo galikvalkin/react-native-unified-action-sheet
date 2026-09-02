@@ -1,39 +1,29 @@
-/// One button. `style` mirrors React Native's own Alert API and the native
-/// button roles, which are mutually exclusive; `disabled` is independent of it.
-export interface ActionSheetButtonInterface {
-  label: string;
-  style?: 'cancel' | 'destructive';
-  disabled?: boolean;
-  /// Runs when this button resolves the sheet, so callers need not match on the
-  /// index. A dismissal that resolves the cancel button counts as pressing it.
+import type {
+  BaseAndroidOptionsInterface,
+  BaseButtonInterface,
+  BaseOptionsInterface,
+} from './common-options.interface';
+
+export interface ActionSheetButtonInterface extends BaseButtonInterface {
   onPress?: () => void;
 }
 
-/// Anything measurable — every React Native host component ref has this method,
-/// so a `useRef` on a View, Pressable or Touchable satisfies it.
 export interface ActionSheetAnchorInterface {
   measureInWindow: (
     callback: (x: number, y: number, width: number, height: number) => void
   ) => void;
 }
 
-export interface ActionSheetCommonOptionsInterface {
+export interface ActionSheetCommonOptionsInterface extends BaseOptionsInterface {
   options: ActionSheetButtonInterface[];
-  title?: string;
-  message?: string;
-  tintColor?: string;
-  cancelButtonTintColor?: string;
-  userInterfaceStyle?: 'light' | 'dark';
   anchor?:
     | ActionSheetAnchorInterface
     | { current: ActionSheetAnchorInterface | null }
     | null;
-  destructiveColor?: string;
   presentationStyle?: 'centered' | 'anchored';
 }
 
-export interface ActionSheetAndroidOptionsInterface {
-  buttonTextAlignment?: 'start' | 'center';
+export interface ActionSheetAndroidOptionsInterface extends BaseAndroidOptionsInterface {
   anchorAlignment?: 'start' | 'center';
 }
 

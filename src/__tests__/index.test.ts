@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 type AnyMock = ReturnType<typeof jest.fn>;
 
 let mockNativeResponse: Promise<number>;
+let mockPromptResponse: Promise<{ buttonIndex: number; text: string }>;
 
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
@@ -12,6 +13,7 @@ jest.mock('../NativeUnifiedActionSheet', () => {
   return {
     default: {
       showActionSheetWithOptions: jest.fn(() => mockNativeResponse),
+      showPromptWithOptions: jest.fn(() => mockPromptResponse),
       dismissActionSheet: jest.fn(),
       dismissAllActionSheets: jest.fn(),
     },
@@ -24,6 +26,7 @@ type MockedReactNative = {
 };
 type MockedNative = {
   showActionSheetWithOptions: AnyMock;
+  showPromptWithOptions: AnyMock;
   dismissActionSheet: AnyMock;
   dismissAllActionSheets: AnyMock;
 };
@@ -42,6 +45,7 @@ const mockedNative = (): MockedNative =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockNativeResponse = Promise.resolve(0);
+  mockPromptResponse = Promise.resolve({ buttonIndex: 0, text: '' });
 });
 
 const buttons = (...labels: string[]) => labels.map((label) => ({ label }));
@@ -351,5 +355,78 @@ describe('per-button onPress', () => {
       showActionSheetWithOptions({ options: [{ label: 'A', onPress }] })
     ).resolves.toBe(-1);
     expect(onPress).not.toHaveBeenCalled();
+  });
+});
+
+describe('showPromptWithOptions', () => {
+  it('flattens buttons into labels and index sets, like the sheet does', async () => {
+    const { showPromptWithOptions } = loadIndex('android');
+
+    await showPromptWithOptions({
+      title: 'Rename',
+      placeholder: 'New name',
+      options: [
+        { label: 'Save' },
+        { label: 'Delete', style: 'destructive' },
+        { label: 'Nope', disabled: true },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
+
+    expect(mockedNative().showPromptWithOptions).toHaveBeenCalledWith({
+      title: 'Rename',
+      placeholder: 'New name',
+      options: ['Save', 'Delete', 'Nope', 'Cancel'],
+      cancelButtonIndex: 3,
+      destructiveButtonIndices: [1],
+      disabledButtonIndices: [2],
+    });
+  });
+
+  it('resolves the index and the text, and passes the text to onPress', async () => {
+    const { showPromptWithOptions } = loadIndex('ios');
+    const onPress = jest.fn();
+    mockPromptResponse = Promise.resolve({ buttonIndex: 0, text: 'typed' });
+
+    await expect(
+      showPromptWithOptions({ options: [{ label: 'OK', onPress }] })
+    ).resolves.toEqual({ buttonIndex: 0, text: 'typed' });
+    expect(onPress).toHaveBeenCalledWith('typed');
+  });
+
+  it('resolves undefined for a programmatic dismiss and runs no handler', async () => {
+    const { showPromptWithOptions } = loadIndex('ios');
+    const onPress = jest.fn();
+    mockPromptResponse = Promise.resolve({ buttonIndex: -2, text: 'draft' });
+
+    await expect(
+      showPromptWithOptions({ options: [{ label: 'OK', onPress }] })
+    ).resolves.toBeUndefined();
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('maps a rejection to the cancel index with empty text', async () => {
+    const { showPromptWithOptions } = loadIndex('android');
+    const onPress = jest.fn();
+    mockPromptResponse = Promise.reject(new Error('E_NO_ACTIVITY'));
+
+    await expect(
+      showPromptWithOptions({
+        options: [
+          { label: 'OK' },
+          { label: 'Cancel', style: 'cancel', onPress },
+        ],
+      })
+    ).resolves.toEqual({ buttonIndex: 1, text: '' });
+    expect(onPress).toHaveBeenCalledWith('');
+  });
+
+  it('resolves undefined on an unsupported platform without calling native', async () => {
+    const { showPromptWithOptions } = loadIndex('web' as 'ios');
+
+    await expect(
+      showPromptWithOptions({ options: [{ label: 'OK' }] })
+    ).resolves.toBeUndefined();
+    expect(mockedNative().showPromptWithOptions).not.toHaveBeenCalled();
   });
 });

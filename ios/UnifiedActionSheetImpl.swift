@@ -45,7 +45,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: cancelButtonIndex,
-      completion: completion
+      completion: { index, _ in completion(index) }
     )
 
     for (index, label) in labels.enumerated() {
@@ -111,6 +111,86 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     parent.present(alert, animated: true)
   }
 
+  /// React Native's Alert.prompt is iOS-only; this is the shared half of the
+  /// unified prompt. Always .alert -- UIKit has no text field in an action
+  /// sheet, and a prompt is inherently a centered, modal question.
+  @objc public func showPrompt(
+    options: NSDictionary,
+    completion: @escaping (Int, String) -> Void
+  ) {
+    let labels = options["options"] as? [String] ?? []
+    let cancelButtonIndex = (options["cancelButtonIndex"] as? NSNumber)?.intValue ?? -1
+    let destructiveIndices = Set(
+      (options["destructiveButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
+    )
+    let disabledIndices = Set(
+      (options["disabledButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
+    )
+    let tintColor = Self.color(options["tintColor"])
+    let cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
+    let destructiveColor = Self.color(options["destructiveColor"])
+
+    guard let parent = Self.presentedViewController() else {
+      completion(cancelButtonIndex, "")
+
+      return
+    }
+
+    let alert = UIAlertController(
+      title: Self.text(options["title"]),
+      message: Self.text(options["message"]),
+      preferredStyle: .alert
+    )
+
+    alert.addTextField { field in
+      field.placeholder = Self.text(options["placeholder"])
+      field.text = Self.text(options["defaultValue"])
+      field.isSecureTextEntry = (options["secureTextEntry"] as? NSNumber)?.boolValue ?? false
+      field.keyboardType = Self.keyboardType(options["keyboardType"])
+    }
+
+    let presentation = Presentation(
+      controller: alert,
+      cancelButtonIndex: cancelButtonIndex,
+      // Weak, or the presentation would retain the controller it is stored on.
+      currentText: { [weak alert] in alert?.textFields?.first?.text ?? "" },
+      completion: completion
+    )
+
+    for (index, label) in labels.enumerated() {
+      let isCancel = index == cancelButtonIndex
+      let style: UIAlertAction.Style =
+        destructiveIndices.contains(index) ? .destructive : (isCancel ? .cancel : .default)
+
+      let action = UIAlertAction(title: label, style: style) { [weak self] _ in
+        self?.finish(presentation, index: index)
+      }
+
+      let color: UIColor? =
+        style == .destructive
+        ? destructiveColor
+        : (isCancel ? (cancelButtonTintColor ?? tintColor) : tintColor)
+
+      action.isEnabled = !disabledIndices.contains(index)
+
+      if let color {
+        action.setValue(color, forKey: "titleTextColor")
+      }
+      alert.addAction(action)
+    }
+
+    alert.view.tintColor = tintColor
+
+    switch options["userInterfaceStyle"] as? String {
+    case "dark": alert.overrideUserInterfaceStyle = .dark
+    case "light": alert.overrideUserInterfaceStyle = .light
+    default: alert.overrideUserInterfaceStyle = .unspecified
+    }
+
+    presentations.append(presentation)
+    parent.present(alert, animated: true)
+  }
+
   @objc public func dismissAll() {
     guard let bottom = presentations.first else { return }
 
@@ -163,15 +243,20 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
   private final class Presentation {
     let controller: UIAlertController
     let cancelButtonIndex: Int
-    private var completion: ((Int) -> Void)?
+    /// Read at resolve time, not at creation: the value that matters is
+    /// whatever is in the field when the prompt closes. Sheets pass a constant.
+    private let currentText: () -> String
+    private var completion: ((Int, String) -> Void)?
 
     init(
       controller: UIAlertController,
       cancelButtonIndex: Int,
-      completion: @escaping (Int) -> Void
+      currentText: @escaping () -> String = { "" },
+      completion: @escaping (Int, String) -> Void
     ) {
       self.controller = controller
       self.cancelButtonIndex = cancelButtonIndex
+      self.currentText = currentText
       self.completion = completion
     }
 
@@ -179,7 +264,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       guard let completion else { return }
 
       self.completion = nil
-      completion(index)
+      completion(index, currentText())
     }
   }
 
@@ -206,6 +291,18 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     else { return nil }
 
     return CGRect(x: x, y: y, width: width, height: height)
+  }
+
+  /// Mirrors the subset of React Native's keyboardType values that map cleanly
+  /// onto both platforms; anything else falls back to the default keyboard.
+  private static func keyboardType(_ value: Any?) -> UIKeyboardType {
+    switch value as? String {
+    case "email-address": return .emailAddress
+    case "numeric": return .numberPad
+    case "phone-pad": return .phonePad
+    case "url": return .URL
+    default: return .default
+    }
   }
 
   private static func text(_ value: Any?) -> String? {
