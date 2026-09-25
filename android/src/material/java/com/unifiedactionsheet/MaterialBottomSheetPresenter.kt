@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDragHandleView
 import com.google.android.material.R as MaterialR
@@ -65,6 +66,17 @@ internal object MaterialBottomSheetPresenter : SheetPresenter {
     dialog.window?.let { window ->
       WindowCompat.getInsetsController(window, window.decorView)
         .isAppearanceLightNavigationBars = !isDark
+    }
+
+    // Edge to edge is for the bottom only. It would also let a long list
+    // expand behind the status bar, so cap the sheet just below it (and any
+    // display cutout); the rows scroll inside it instead.
+    val decor = activity.window.decorView
+    val topInset = ViewCompat.getRootWindowInsets(decor)
+      ?.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+      ?.top ?: 0
+    if (decor.height > topInset) {
+      dialog.behavior.maxHeight = decor.height - topInset
     }
 
     return dialog
