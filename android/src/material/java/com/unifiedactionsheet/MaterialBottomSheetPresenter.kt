@@ -6,6 +6,7 @@ import android.content.res.ColorStateList
 import android.view.View
 import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDragHandleView
 import com.google.android.material.R as MaterialR
@@ -57,6 +58,13 @@ internal object MaterialBottomSheetPresenter : SheetPresenter {
     // matches the palette the centered and anchored styles use.
     dialog.findViewById<View>(MaterialR.id.design_bottom_sheet)?.let { sheet ->
       ViewCompat.setBackgroundTintList(sheet, ColorStateList.valueOf(palette.surface))
+    }
+
+    // The sheet now sits behind the navigation bar, so its buttons or gesture
+    // handle need to contrast with the sheet, not with the app underneath.
+    dialog.window?.let { window ->
+      WindowCompat.getInsetsController(window, window.decorView)
+        .isAppearanceLightNavigationBars = !isDark
     }
 
     return dialog

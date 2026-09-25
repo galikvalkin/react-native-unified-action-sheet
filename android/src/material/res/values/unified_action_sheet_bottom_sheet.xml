@@ -3,8 +3,20 @@
   <!-- Full Material 3 themes, not overlays: Material components refuse to
        inflate under a non-Material theme, and the host app's may be plain
        AppCompat. userInterfaceStyle picks light or dark explicitly, so neither
-       follows DayNight. -->
-  <style name="UnifiedActionSheet.BottomSheetDialog.Light" parent="Theme.Material3.Light.BottomSheetDialog" />
+       follows DayNight.
 
-  <style name="UnifiedActionSheet.BottomSheetDialog.Dark" parent="Theme.Material3.Dark.BottomSheetDialog" />
+       Edge to edge, so the sheet runs down behind the navigation bar instead
+       of stopping above it and leaving a strip of scrim there. Material only
+       does this when enableEdgeToEdge is set and the navigation bar is
+       translucent; the sheet then pads its content by the bar's inset, so the
+       last row stays clear of it. -->
+  <style name="UnifiedActionSheet.BottomSheetDialog.Light" parent="Theme.Material3.Light.BottomSheetDialog">
+    <item name="enableEdgeToEdge">true</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+  </style>
+
+  <style name="UnifiedActionSheet.BottomSheetDialog.Dark" parent="Theme.Material3.Dark.BottomSheetDialog">
+    <item name="enableEdgeToEdge">true</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+  </style>
 </resources>
