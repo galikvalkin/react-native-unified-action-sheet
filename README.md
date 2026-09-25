@@ -16,7 +16,7 @@ Unified action sheet API for React Native: a native `UIAlertController` on iOS, 
 - **One API, native on both platforms**, so the same options behave the same way.
 - **Prompts included.** React Native's `Alert.prompt` is iOS-only and silently does nothing on Android; `showPromptWithOptions()` works on both.
 - Works on React Native **0.81 (old and new architecture)** through the **latest** release.
-- **No extra native dependencies** on either platform, and zero runtime dependencies (`react` / `react-native` peers only).
+- **No extra native dependencies** on either platform, and zero runtime dependencies (`react` / `react-native` peers only). The Android bottom sheet is the one exception: it uses Material, which you [opt into](#bottom-sheets) only if you want it.
 
 ## Installation
 
@@ -76,6 +76,40 @@ const anchorRef = useRef<View>(null);
 
 Anything with a `measureInWindow` method works, which is every React Native host component ref. On iOS the anchor only applies on iPad, where the sheet becomes a popover; iPhone always presents from the bottom.
 
+### Bottom sheets
+
+`presentationStyle: 'bottom'` presents a Material 3 bottom sheet on Android. It has a drag handle and rounded top corners, and swiping it down cancels it. A long list opens part-way and drags up to expand. Cancel is the last row, and swipe down, back and a backdrop tap resolve it as usual. On iOS, `'bottom'` is the standard action sheet, the same as leaving `presentationStyle` unset. `anchor` is ignored.
+
+```ts
+await showActionSheetWithOptions({
+  options: [...],
+  presentationStyle: 'bottom',
+});
+```
+
+The bottom sheet needs `com.google.android.material`, which this library does not add unless you ask for it:
+
+```properties
+# android/gradle.properties
+unifiedActionSheet.material=true
+```
+
+In Expo, use the config plugin instead, then rebuild with `npx expo prebuild` or `npx expo run:android`:
+
+```json
+{
+  "expo": {
+    "plugins": [["react-native-unified-action-sheet", { "material": true }]]
+  }
+}
+```
+
+Without it, `'bottom'` falls back to the centered dialog, and a warning in development tells you what to set.
+
+The library pins a tested Material version (1.12.0). If your app already uses Material, Gradle resolves the two to the higher version. To choose one yourself, set `ext.materialVersion` in `android/build.gradle`, set `unifiedActionSheet.materialVersion` in `gradle.properties`, or pass `materialVersion` to the Expo plugin. The sheet brings its own Material 3 theme, so your app's theme can stay plain AppCompat.
+
+Prompts don't support `'bottom'` and always present centered.
+
 ### Prompts
 
 `showPromptWithOptions()` is the same dialog with a text field:
@@ -125,8 +159,8 @@ import {
 | `onPress` (per button) | `() => void?` | ✅ | ✅ | Runs when this button resolves the sheet. |
 | `title` | `string?` | ✅ | ✅ | Sheet title. |
 | `message` | `string?` | ✅ | ✅ | Secondary text under the title. |
-| `presentationStyle` | `'centered' \| 'anchored'` | ✅ | ✅ | `'centered'` is a centered dialog; `'anchored'` attaches to `anchor` (an iPad popover on iOS). **Defaults differ**: Android `'centered'`, iOS the standard action sheet. |
-| `anchor` | `ActionSheetAnchorInterface?` | ✅ | ✅ | A ref, or anything with `measureInWindow`. Without a measurable anchor an `'anchored'` sheet falls back to a centered dialog. |
+| `presentationStyle` | `'centered' \| 'anchored' \| 'bottom'` | ✅ | ✅ | `'centered'` is a centered dialog; `'anchored'` attaches to `anchor` (an iPad popover on iOS); `'bottom'` is a [bottom sheet](#bottom-sheets) (Material on Android, which needs an opt-in). **Defaults differ**: Android `'centered'`, iOS the standard action sheet. |
+| `anchor` | `ActionSheetAnchorInterface?` | ✅ | ✅ | A ref, or anything with `measureInWindow`. Without a measurable anchor an `'anchored'` sheet falls back to a centered dialog. Ignored by `'bottom'`. |
 | `anchorAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of an `'anchored'` popup relative to its anchor. `'start'` (default) aligns leading edges, flipping in RTL. |
 | `userInterfaceStyle` | `'light' \| 'dark'` | ✅ | ✅ | Forces the appearance; defaults to following the system setting. |
 | `tintColor` | `string?` | ✅ | ✅ | Text color of non-destructive buttons. |

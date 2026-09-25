@@ -6,11 +6,15 @@ import com.facebook.react.bridge.ReadableMap
 internal enum class PresentationStyle {
   CENTERED,
   ANCHORED,
+  BOTTOM,
   ;
 
   companion object {
-    fun fromWire(value: String?): PresentationStyle =
-      if (value == "anchored") ANCHORED else CENTERED
+    fun fromWire(value: String?): PresentationStyle = when (value) {
+      "anchored" -> ANCHORED
+      "bottom" -> BOTTOM
+      else -> CENTERED
+    }
   }
 }
 

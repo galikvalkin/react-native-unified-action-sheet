@@ -1,6 +1,11 @@
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
 
 export interface Spec extends TurboModule {
+  getConstants(): {
+    /// Android: whether the app opted into Material (presentationStyle
+    /// 'bottom'). Always false on iOS, which needs no opt-in.
+    isMaterialEnabled: boolean;
+  };
   showActionSheetWithOptions(options: {
     options: string[];
     cancelButtonIndex?: number;

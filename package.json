@@ -18,6 +18,7 @@
       }
     },
     "./package.json": "./package.json",
+    "./app.plugin.js": "./app.plugin.js",
     "./jest": {
       "types": "./jest/index.d.ts",
       "default": "./jest/index.js"
@@ -27,6 +28,8 @@
     "src",
     "lib",
     "jest",
+    "plugin",
+    "app.plugin.js",
     "android",
     "ios",
     "*.podspec",
@@ -97,8 +100,14 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
+    "@expo/config-plugins": "*",
     "react": "*",
     "react-native": ">=0.81.0"
+  },
+  "peerDependenciesMeta": {
+    "@expo/config-plugins": {
+      "optional": true
+    }
   },
   "workspaces": [
     "example"

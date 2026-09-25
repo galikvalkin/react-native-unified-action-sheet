@@ -17,6 +17,20 @@ RCT_EXPORT_MODULE()
   return NO;
 }
 
+/// Material is an Android opt-in; iOS presents 'bottom' as the standard action
+/// sheet with nothing to enable.
+- (facebook::react::ModuleConstants<JS::NativeUnifiedActionSheet::Constants::Builder>)constantsToExport
+{
+  return [self getConstants];
+}
+
+- (facebook::react::ModuleConstants<JS::NativeUnifiedActionSheet::Constants::Builder>)getConstants
+{
+  return facebook::react::typedConstants<JS::NativeUnifiedActionSheet::Constants::Builder>({
+      .isMaterialEnabled = false,
+  });
+}
+
 /// Only the keys the iOS presentation understands are forwarded; the
 /// Android-only keys in the shared spec are ignored here.
 RCT_EXPORT_METHOD(showActionSheetWithOptions
