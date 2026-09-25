@@ -20,7 +20,7 @@ export interface ActionSheetCommonOptionsInterface extends BaseOptionsInterface 
     | ActionSheetAnchorInterface
     | { current: ActionSheetAnchorInterface | null }
     | null;
-  presentationStyle?: 'centered' | 'anchored';
+  presentationStyle?: 'centered' | 'anchored' | 'bottom';
 }
 
 export interface ActionSheetAndroidOptionsInterface extends BaseAndroidOptionsInterface {

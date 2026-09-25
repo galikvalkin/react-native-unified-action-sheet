@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Full Material 3 themes, not overlays: Material components refuse to
+       inflate under a non-Material theme, and the host app's may be plain
+       AppCompat. userInterfaceStyle picks light or dark explicitly, so neither
+       follows DayNight. -->
+  <style name="UnifiedActionSheet.BottomSheetDialog.Light" parent="Theme.Material3.Light.BottomSheetDialog" />
+
+  <style name="UnifiedActionSheet.BottomSheetDialog.Dark" parent="Theme.Material3.Dark.BottomSheetDialog" />
+</resources>

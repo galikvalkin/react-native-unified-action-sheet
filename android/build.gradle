@@ -2,7 +2,8 @@ buildscript {
   ext.UnifiedActionSheet = [
     kotlinVersion: "2.0.21",
     minSdkVersion: 24,
-    compileSdkVersion: 36
+    compileSdkVersion: 36,
+    materialVersion: "1.12.0"
   ]
 
   ext.getExtOrDefault = { prop ->
@@ -31,6 +32,20 @@ apply plugin: "kotlin-android"
 
 apply plugin: "com.facebook.react"
 
+// Material is opt-in, so apps that don't use presentationStyle 'bottom' stay
+// free of the dependency. The app sets unifiedActionSheet.material=true in its
+// gradle.properties (the Expo config plugin writes it); only then is the
+// Material presenter compiled and the dependency added. src/main never
+// references a Material class: it goes through BottomSheetPresenterFactory,
+// which both variant source sets define.
+def materialEnabled = (findProperty("unifiedActionSheet.material") ?: "false").toString().toBoolean()
+
+// ext.materialVersion on the root project wins, then the gradle property, then
+// the version this library is tested against.
+def materialVersion = rootProject.ext.has("materialVersion")
+  ? rootProject.ext.get("materialVersion")
+  : (findProperty("unifiedActionSheet.materialVersion") ?: UnifiedActionSheet.materialVersion)
+
 android {
   namespace "com.unifiedactionsheet"
 
@@ -38,6 +53,15 @@ android {
 
   defaultConfig {
     minSdkVersion getExtOrDefault("minSdkVersion")
+  }
+
+  sourceSets {
+    main {
+      java.srcDirs += materialEnabled ? "src/material/java" : "src/noMaterial/java"
+      if (materialEnabled) {
+        res.srcDirs += "src/material/res"
+      }
+    }
   }
 
   compileOptions {
@@ -48,4 +72,7 @@ android {
 
 dependencies {
   implementation "com.facebook.react:react-android"
+  if (materialEnabled) {
+    implementation "com.google.android.material:material:${materialVersion}"
+  }
 }
