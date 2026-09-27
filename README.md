@@ -1,16 +1,11 @@
 # react-native-unified-action-sheet
 
-Unified action sheet API for React Native: a native `UIAlertController` on iOS, a native `AppCompatDialog` on Android.
+Unified action sheet API for React Native: native action sheets, alerts, bottom sheets and prompts on iOS and Android.
 
-| Android | Android (dark mode) | iOS |
+| | Light | Dark |
 | :---: | :---: | :---: |
-| <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/android-demo.gif" width="280" alt="Android demo" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/android-demo-dark-mode.gif" width="280" alt="Android dark-mode demo — following the system dark theme" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/ios-demo.gif" width="280" alt="iOS demo" /> |
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/ipad-demo.gif" width="420" alt="iPad demo — the sheet as a popover anchored to the button that opened it" />
-  <br />
-  <em>iPad: the same sheet presented as a popover, anchored to the view that opened it.</em>
-</p>
+| **Android** | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/android-demo-light-mode.gif" width="280" alt="Android demo in light mode" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/android-demo-dark-mode.gif" width="280" alt="Android demo in dark mode" /> |
+| **iOS** | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/ios-demo-light-mode.gif" width="280" alt="iOS demo in light mode" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/ios-demo-dark-mode.gif" width="280" alt="iOS demo in dark mode" /> |
 
 - **Fully native, always on top.** The sheet gets its own platform window, so it renders above your whole view tree, including an open [`Modal`](https://reactnative.dev/docs/modal). JS-rendered sheets live inside the component tree, where `overflow`, `zIndex` or a modal can clip or bury them.
 - **One API on both platforms**: action sheets, anchored popovers, bottom sheets and text prompts.
