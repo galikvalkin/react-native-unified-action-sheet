@@ -1835,7 +1835,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-unified-action-sheet (0.1.0):
+  - react-native-unified-action-sheet (0.3.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2643,7 +2643,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 8f8bba0802f49d7926602c5c276f2a2083a5ac55
   React-microtasksnativemodule: 1e4d3178ba5d5000b351b902c603fb0c9d60649e
   react-native-safe-area-context: ebd2c2ece5e6e650a6963184039ec8cfd8960d86
-  react-native-unified-action-sheet: 46e78005069065f810a6924db861df12d033f08b
+  react-native-unified-action-sheet: 56779413ee49e9fc7c4613a8f8bf087ada230d5a
   React-NativeModulesApple: 183f9bd5b20a51a8b016e90be78ed6c1538da4a7
   React-oscompat: d5e3366fbd6c7150e17c1bda85eab583a6fa9fce
   React-perflogger: 2e4ca29b2bc69c80ef5133de127f5a3c2357c583
