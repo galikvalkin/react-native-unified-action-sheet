@@ -1,6 +1,6 @@
 {
   "name": "react-native-unified-action-sheet",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Unified native action sheet for React Native, one API on iOS and Android",
   "main": "./lib/commonjs/index.js",
   "sideEffects": false,
