@@ -55,7 +55,7 @@ The call resolves with the tapped button's index, and that button's `onPress` ru
 | unset | Action sheet from the bottom | Centered dialog |
 | `'centered'` | Centered alert | Centered dialog |
 | `'anchored'` | Popover on iPad, pointing at `anchor` | Popup attached to `anchor` |
-| `'bottom'` | Action sheet from the bottom | Material bottom sheet ([opt-in](docs/bottom-sheet.md)) |
+| `'bottom'` | Sheet with a grabber (popover on iPad) | Material bottom sheet ([opt-in](docs/bottom-sheet.md)) |
 
 ### Prompts
 
@@ -82,7 +82,7 @@ const result = await showPromptWithOptions({
 
 - [API reference](docs/api.md): every option, per platform
 - [Behavior](docs/behavior.md): what each gesture resolves with, and platform differences
-- [Bottom sheets](docs/bottom-sheet.md): enabling Material, Expo, versions
+- [Bottom sheets](docs/bottom-sheet.md): both platforms, and enabling Material on Android
 - [Testing](docs/testing.md): the shipped Jest mock
 
 ## Compatibility

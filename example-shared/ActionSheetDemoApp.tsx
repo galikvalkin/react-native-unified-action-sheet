@@ -105,7 +105,7 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
       options: {
         title: 'Bottom sheet',
         message:
-          'The standard action sheet on iOS; a Material bottom sheet on Android when the app enables Material, which example/ does and example-legacy/ does not (there it falls back to a centered dialog, with a dev warning).',
+          'A native sheet on iOS; a Material bottom sheet on Android when the app enables Material, which example/ does and example-legacy/ does not (there it falls back to a centered dialog, with a dev warning).',
         options: [
           option('Share'),
           option('Duplicate'),
@@ -120,7 +120,7 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
       options: {
         title: 'Long bottom sheet',
         message:
-          'On Android this opens part-way; drag it up to see every row, with Cancel last.',
+          'This opens part-way; drag it up to see every row, with Cancel last.',
         options: [
           ...Array.from({ length: 16 }, (_, i) => option(`Option ${i + 1}`)),
           { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },

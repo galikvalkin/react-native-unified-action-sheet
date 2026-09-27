@@ -53,7 +53,7 @@ What each gesture resolves with, and which `onPress` runs, is in [Behavior](beha
 | unset | The standard action sheet, from the bottom (a popover on iPad) | Centered dialog |
 | `'centered'` | Centered alert | Centered dialog |
 | `'anchored'` | A popover on iPad, pointing at `anchor`; the standard action sheet on iPhone | Menu-style popup attached to `anchor` |
-| `'bottom'` | The standard action sheet, same as unset | Material bottom sheet; [needs an opt-in](bottom-sheet.md) |
+| `'bottom'` | A [bottom sheet](bottom-sheet.md) with a grabber on iPhone; the action sheet's popover on iPad | Material [bottom sheet](bottom-sheet.md); needs an opt-in |
 
 **The defaults differ**: iOS presents from the bottom, Android centered. Pass a style to get the same one on both.
 

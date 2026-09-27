@@ -1,8 +1,13 @@
 # Bottom sheets
 
-`presentationStyle: 'bottom'` presents a Material 3 bottom sheet on Android. It has a drag handle and rounded top corners, and swiping it down cancels it. A long list opens part-way and drags up to expand. Cancel is the last row, and swipe down, back and a backdrop tap resolve it as usual.
+`presentationStyle: 'bottom'` presents a native bottom sheet on both platforms: a drag handle, swipe down to cancel, and a long list that opens part-way and drags up to expand. Cancel is the last row. Swipe down and a tap on the dimmed backdrop (and back, on Android) resolve the cancel index, or `-1` if there is no cancel button. `anchor` is ignored.
 
-On iOS, `'bottom'` is the standard action sheet, the same as leaving `presentationStyle` unset. `anchor` is ignored.
+| | iOS | Android |
+| --- | --- | --- |
+| Component | `UISheetPresentationController` | Material 3 `BottomSheetDialog` |
+| Setup | none | [enable Material](#enabling-material-android) |
+| Short list | Opens at its own height (iOS 16+; half height on iOS 15) | Opens at its own height |
+| iPad | Presents the action sheet's popover instead, as a sheet on iPad is a centered form sheet | n/a |
 
 ```ts
 await showActionSheetWithOptions({
@@ -11,7 +16,7 @@ await showActionSheetWithOptions({
 });
 ```
 
-## Enabling Material
+## Enabling Material (Android)
 
 The bottom sheet needs `com.google.android.material`, which this library does not add unless you ask for it.
 

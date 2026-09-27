@@ -20,7 +20,7 @@ A prompt resolves the same way, with `{ buttonIndex, text }`, and its `onPress` 
 
 ## Platform differences
 
-- **Which gestures dismiss differs.** On iOS a sheet can only be tapped away if it has a `'cancel'` button, and a `'centered'` one never can, because UIKit treats it as strictly modal. Android's centered dialog always cancels on a backdrop tap. Give a sheet a cancel button if you want that gesture everywhere.
+- **Which gestures dismiss differs.** On iOS an action sheet can only be tapped away if it has a `'cancel'` button, and a `'centered'` one never can, because UIKit treats it as strictly modal. Android's centered dialog always cancels on a backdrop tap. Give a sheet a cancel button if you want that gesture everywhere. A `'bottom'` sheet can be swiped away on both platforms, with or without one.
 - **On iPad, a popover hides the cancel row**, since tapping outside already cancels. The index you receive is unaffected.
 - **Sheets stack.** Opening one over another puts it on top, and each resolves its own promise. Opening a sheet over a `Modal` does not dismiss the modal.
 - **Light or dark follows the system setting** unless `userInterfaceStyle` forces one, chosen when the sheet opens. It uses its own palette, so it looks the same in any host app.

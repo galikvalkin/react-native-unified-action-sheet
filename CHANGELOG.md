@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `presentationStyle: 'bottom'`: a Material 3 bottom sheet on Android. It has a
-  drag handle and swipe to dismiss, and a long list opens part-way and drags up
-  to expand. On iOS it is the standard action sheet, the same as the default.
-  `anchor` is ignored for it.
+- `presentationStyle: 'bottom'`: a native bottom sheet on both platforms, with
+  a drag handle and swipe to dismiss. A long list opens part-way and drags up
+  to expand. On iOS it is a `UISheetPresentationController` sheet with native
+  rows (on iPad, the action sheet's popover instead); on Android, a Material 3
+  bottom sheet. `anchor` is ignored for it.
 - Material is opt-in, so apps that don't use the bottom sheet stay free of the
   dependency. Set `unifiedActionSheet.material=true` in
   `android/gradle.properties`. Only then does the library add
