@@ -21,15 +21,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-    window = UIWindow(frame: UIScreen.main.bounds)
+    // The window, and React Native in it, come up per scene: see SceneDelegate.
+    return true
+  }
+}
+
+/// The UIScene lifecycle, declared in Info.plist's UIApplicationSceneManifest.
+/// iOS 26 deprecates apps without it and iOS 27 refuses to launch them. Kept in
+/// this file so the Xcode project needs no new file reference.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+  var window: UIWindow?
+
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    guard
+      let windowScene = scene as? UIWindowScene,
+      let appDelegate = UIApplication.shared.delegate as? AppDelegate,
+      let factory = appDelegate.reactNativeFactory
+    else { return }
+
+    let window = UIWindow(windowScene: windowScene)
+    self.window = window
+    // Libraries that still read the app delegate's window find this one.
+    appDelegate.window = window
 
     factory.startReactNative(
       withModuleName: "UnifiedActionSheetLegacyExample",
       in: window,
-      launchOptions: launchOptions
+      launchOptions: nil
     )
-
-    return true
   }
 }
 
