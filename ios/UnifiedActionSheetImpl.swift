@@ -2,7 +2,9 @@ import Foundation
 import UIKit
 
 @objc(UnifiedActionSheetImpl)
-public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDelegate {
+public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDelegate,
+  UISheetPresentationControllerDelegate
+{
   @objc public static let shared = UnifiedActionSheetImpl()
 
   private static let dismissedByApi = -2
@@ -27,6 +29,28 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
     guard let parent = Self.presentedViewController() else {
       completion(cancelButtonIndex)
+
+      return
+    }
+
+    // 'bottom' is a real sheet on iPhone. iPad keeps the action sheet below,
+    // which presents as a popover there: a sheet on iPad is a centered form
+    // sheet, not attached to the bottom at all.
+    if options["presentationStyle"] as? String == "bottom",
+      UIDevice.current.userInterfaceIdiom != .pad
+    {
+      presentBottomSheet(
+        on: parent,
+        options: options,
+        labels: labels,
+        cancelButtonIndex: cancelButtonIndex,
+        destructiveIndices: destructiveIndices,
+        disabledIndices: disabledIndices,
+        tintColor: tintColor,
+        cancelButtonTintColor: cancelButtonTintColor,
+        destructiveColor: destructiveColor,
+        completion: completion
+      )
 
       return
     }
@@ -191,6 +215,103 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     parent.present(alert, animated: true)
   }
 
+  private func presentBottomSheet(
+    on parent: UIViewController,
+    options: NSDictionary,
+    labels: [String],
+    cancelButtonIndex: Int,
+    destructiveIndices: Set<Int>,
+    disabledIndices: Set<Int>,
+    tintColor: UIColor?,
+    cancelButtonTintColor: UIColor?,
+    destructiveColor: UIColor?,
+    completion: @escaping (Int) -> Void
+  ) {
+    let rows = labels.enumerated().map { index, label in
+      BottomSheetViewController.Row(
+        index: index,
+        label: label,
+        isDestructive: destructiveIndices.contains(index),
+        isEnabled: !disabledIndices.contains(index)
+      )
+    }
+
+    let sheet = BottomSheetViewController(
+      title: Self.text(options["title"]),
+      message: Self.text(options["message"]),
+      rows: rows.filter { $0.index != cancelButtonIndex },
+      cancelRow: rows.first { $0.index == cancelButtonIndex },
+      tintColor: tintColor,
+      cancelButtonTintColor: cancelButtonTintColor,
+      destructiveColor: destructiveColor
+    )
+
+    let presentation = Presentation(
+      controller: sheet,
+      cancelButtonIndex: cancelButtonIndex,
+      completion: { index, _ in completion(index) }
+    )
+
+    // Weak: the presentation holds the sheet, which holds this closure.
+    sheet.onSelect = { [weak self, weak presentation] index in
+      guard let presentation else { return }
+
+      // Unlike an alert action, a row does not dismiss the sheet itself.
+      // Resolve once it is gone, as an alert does.
+      presentation.controller.dismiss(animated: true) {
+        self?.finish(presentation, index: index)
+      }
+    }
+
+    switch options["userInterfaceStyle"] as? String {
+    case "dark": sheet.overrideUserInterfaceStyle = .dark
+    case "light": sheet.overrideUserInterfaceStyle = .light
+    default: sheet.overrideUserInterfaceStyle = .unspecified
+    }
+    sheet.view.tintColor = tintColor
+
+    if let controller = sheet.sheetPresentationController {
+      controller.prefersGrabberVisible = true
+      controller.prefersEdgeAttachedInCompactHeight = true
+      // Swipe down resolves through presentationControllerDidDismiss.
+      controller.delegate = self
+
+      let bounds = parent.view.window?.bounds ?? parent.view.bounds
+      let fitting = sheet.fittingHeight(width: bounds.width)
+
+      // A short list opens at its own height; a long one opens at half height
+      // and drags up to expand, like the Android sheet. Fitting the content
+      // needs a custom detent, iOS 16+; iOS 15 opens at half height.
+      if #available(iOS 16.0, *), fitting <= bounds.height / 2 {
+        controller.detents = [
+          .custom(identifier: .init("unifiedActionSheet.content")) { context in
+            min(fitting, context.maximumDetentValue)
+          },
+        ]
+      } else {
+        controller.detents = [.medium(), .large()]
+      }
+    }
+
+    presentations.append(presentation)
+    parent.present(sheet, animated: true)
+  }
+
+  /// Interactive dismissal of a sheet: a swipe down or a tap on the dimmed
+  /// area. It resolves the cancel index, or -1 without one, like Android. A
+  /// programmatic dismiss() does not call this.
+  public func presentationControllerDidDismiss(
+    _ presentationController: UIPresentationController
+  ) {
+    guard
+      let presentation = presentations.first(where: {
+        $0.controller === presentationController.presentedViewController
+      })
+    else { return }
+
+    finish(presentation, index: presentation.cancelButtonIndex)
+  }
+
   @objc public func dismissAll() {
     guard let bottom = presentations.first else { return }
 
@@ -211,6 +332,21 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
   }
 
+  /// The JS runtime is going away: close every sheet, prompt and alert, but
+  /// resolve none of them. Their promises belong to the runtime being torn
+  /// down, and the list is shared, so stale entries must not outlive it.
+  @objc public func invalidate() {
+    let all = presentations
+    presentations.removeAll()
+    all.forEach { $0.discard() }
+
+    // As in dismissAll(): the lowest sheet's presenter dismisses it and
+    // everything stacked above it.
+    all.first { $0.controller.presentingViewController != nil }?
+      .controller.presentingViewController?
+      .dismiss(animated: false)
+  }
+
   @objc public func dismiss() {
     guard let presentation = presentations.last else { return }
 
@@ -224,10 +360,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
   public func popoverPresentationControllerDidDismissPopover(
     _ popoverPresentationController: UIPopoverPresentationController
   ) {
-    guard
-      let alert = popoverPresentationController.presentedViewController
-        as? UIAlertController,
-      let presentation = presentations.first(where: { $0.controller === alert })
+    let alert = popoverPresentationController.presentedViewController
+    guard let presentation = presentations.first(where: { $0.controller === alert })
     else { return }
 
     finish(presentation, index: presentation.cancelButtonIndex)
@@ -241,7 +375,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
   }
 
   private final class Presentation {
-    let controller: UIAlertController
+    /// A UIAlertController, or the bottom sheet on iPhone.
+    let controller: UIViewController
     let cancelButtonIndex: Int
     /// Read at resolve time, not at creation: the value that matters is
     /// whatever is in the field when the prompt closes. Sheets pass a constant.
@@ -249,7 +384,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     private var completion: ((Int, String) -> Void)?
 
     init(
-      controller: UIAlertController,
+      controller: UIViewController,
       cancelButtonIndex: Int,
       currentText: @escaping () -> String = { "" },
       completion: @escaping (Int, String) -> Void
@@ -258,6 +393,11 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       self.cancelButtonIndex = cancelButtonIndex
       self.currentText = currentText
       self.completion = completion
+    }
+
+    /// Drops the completion without calling it.
+    func discard() {
+      completion = nil
     }
 
     func resolve(_ index: Int) {

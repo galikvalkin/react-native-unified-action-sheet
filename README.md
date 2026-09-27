@@ -1,22 +1,16 @@
 # react-native-unified-action-sheet
 
-Unified action sheet API for React Native: a native `UIAlertController` on iOS, a native `AppCompatDialog` on Android.
+Unified native action sheet for React Native, one API on iOS and Android.
 
-| Android | Android (dark mode) | iOS |
+| | Light | Dark |
 | :---: | :---: | :---: |
-| <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/android-demo.gif" width="280" alt="Android demo" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/android-demo-dark-mode.gif" width="280" alt="Android dark-mode demo — following the system dark theme" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/ios-demo.gif" width="280" alt="iOS demo" /> |
+| **Android** | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/android-demo-light-mode.gif" width="280" alt="Android demo in light mode" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/android-demo-dark-mode.gif" width="280" alt="Android demo in dark mode" /> |
+| **iOS** | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/ios-demo-light-mode.gif" width="280" alt="iOS demo in light mode" /> | <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/images/ios-demo-dark-mode.gif" width="280" alt="iOS demo in dark mode" /> |
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/galikvalkin/react-native-unified-action-sheet/HEAD/docs/ipad-demo.gif" width="420" alt="iPad demo — the sheet as a popover anchored to the button that opened it" />
-  <br />
-  <em>iPad: the same sheet presented as a popover, anchored to the view that opened it.</em>
-</p>
-
-- **Fully native, always on top.** The sheet gets its own platform window, so it renders above your whole view tree — including an already-open [`Modal`](https://reactnative.dev/docs/modal). JS-rendered sheets live *inside* the component tree, where `overflow`, `zIndex`, a transform or an open modal can clip or bury them.
-- **One API, native on both platforms**, so the same options behave the same way.
-- **Prompts included.** React Native's `Alert.prompt` is iOS-only and silently does nothing on Android; `showPromptWithOptions()` works on both.
-- Works on React Native **0.81 (old and new architecture)** through the **latest** release.
-- **No extra native dependencies** on either platform, and zero runtime dependencies (`react` / `react-native` peers only).
+- **Fully native, always on top.** The sheet gets its own platform window, so it renders above your whole view tree, including an open [`Modal`](https://reactnative.dev/docs/modal). JS-rendered sheets live inside the component tree, where `overflow`, `zIndex` or a modal can clip or bury them.
+- **One API on both platforms**: action sheets, anchored popovers, bottom sheets and text prompts.
+- **Prompts on Android too.** React Native's `Alert.prompt` is iOS-only; `showPromptWithOptions()` works on both.
+- **No dependencies.** `react` and `react-native` are peers; the Android bottom sheet's Material is opt-in.
 
 ## Installation
 
@@ -26,7 +20,9 @@ npm install react-native-unified-action-sheet
 yarn add react-native-unified-action-sheet
 ```
 
-Autolinking handles the rest on both platforms. In Expo apps, use a development build (`npx expo run:ios` / `npx expo run:android`) — custom native modules do not work in **Expo Go**.
+Autolinking handles the rest. In Expo, use a development build (`npx expo run:ios` / `npx expo run:android`); custom native modules do not work in Expo Go.
+
+**Optional:** for the Android bottom sheet, set `unifiedActionSheet.material=true` in `android/gradle.properties`, or add the Expo plugin. See [Bottom sheets](docs/bottom-sheet.md).
 
 ## Usage
 
@@ -45,40 +41,18 @@ await showActionSheetWithOptions({
 });
 ```
 
-`style` marks the two native roles, which are mutually exclusive; `disabled` is independent of it. `onPress` runs when that button resolves the sheet, and the call also resolves with the tapped index — the two never disagree:
+The call resolves with the tapped button's index, and that button's `onPress` runs. A backdrop tap or back resolves the `'cancel'` button. The promise never rejects. See [Behavior](docs/behavior.md).
 
-| | promise resolves with | `onPress` runs |
+### Presentation styles
+
+| `presentationStyle` | iOS | Android |
 | --- | --- | --- |
-| Tapping a button | its index | that button's |
-| Backdrop tap, back button, swipe down | the `'cancel'` button's index, or `-1` if there is none | the cancel button's, if there is one |
-| `dismissActionSheet()` | `undefined` | nothing |
-
-The promise never rejects on its own — only if one of your own `onPress` handlers throws.
-
-### Anchored sheets
-
-`presentationStyle: 'anchored'` attaches the sheet to a view. Pass the ref itself; the library measures it and sends only the resulting rectangle across:
-
-```tsx
-const anchorRef = useRef<View>(null);
-
-<Pressable
-  ref={anchorRef}
-  onPress={() =>
-    showActionSheetWithOptions({
-      options: [...],
-      presentationStyle: 'anchored',
-      anchor: anchorRef,
-    })
-  }
-/>;
-```
-
-Anything with a `measureInWindow` method works, which is every React Native host component ref. On iOS the anchor only applies on iPad, where the sheet becomes a popover; iPhone always presents from the bottom.
+| unset | Action sheet from the bottom | Centered dialog |
+| `'centered'` | Centered alert | Centered dialog |
+| `'anchored'` | Popover on iPad, pointing at `anchor` | Popup attached to `anchor` |
+| `'bottom'` | Sheet with a grabber (popover on iPad) | Material bottom sheet ([opt-in](docs/bottom-sheet.md)) |
 
 ### Prompts
-
-`showPromptWithOptions()` is the same dialog with a text field:
 
 ```ts
 import { showPromptWithOptions } from 'react-native-unified-action-sheet';
@@ -95,78 +69,16 @@ const result = await showPromptWithOptions({
 // { buttonIndex, text }, or undefined after dismissActionSheet().
 ```
 
-Buttons behave as they do for the sheet, except `onPress` receives the field's
-text. That text is whatever was in the field when the prompt closed, including
-on a dismissal, so a draft is recoverable. Extra options: `placeholder`,
-`defaultValue`, `secureTextEntry` and `keyboardType` (`'default' |
-'email-address' | 'numeric' | 'phone-pad' | 'url'`).
-
-A prompt is always centered — UIKit has no text field in an action sheet, so
-`presentationStyle` and `anchor` do not apply.
-
 ### Dismissing from code
 
-`dismissActionSheet()` closes the most recently opened sheet, `dismissAllActionSheets()` closes every open one. Both are no-ops when nothing is open, and the dismissed sheets resolve with `undefined`.
+`dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. Dismissed sheets resolve with `undefined`.
 
-```ts
-import {
-  dismissActionSheet,
-  dismissAllActionSheets,
-} from 'react-native-unified-action-sheet';
-```
+## Documentation
 
-### Options
-
-| Option | Type | iOS | Android | Description |
-| --- | --- | :---: | :---: | --- |
-| `options` | `ActionSheetButtonInterface[]` | ✅ | ✅ | The buttons, in order: `{ label, style?, disabled?, onPress? }`. |
-| `style` (per button) | `'cancel' \| 'destructive'?` | ✅ | ✅ | `'cancel'` renders a separated row and resolves on backdrop tap / back; `'destructive'` uses the destructive color. Only the first `'cancel'` counts. |
-| `disabled` (per button) | `boolean?` | ✅ | ✅ | Renders the row dimmed and unresponsive to taps. |
-| `onPress` (per button) | `() => void?` | ✅ | ✅ | Runs when this button resolves the sheet. |
-| `title` | `string?` | ✅ | ✅ | Sheet title. |
-| `message` | `string?` | ✅ | ✅ | Secondary text under the title. |
-| `presentationStyle` | `'centered' \| 'anchored'` | ✅ | ✅ | `'centered'` is a centered dialog; `'anchored'` attaches to `anchor` (an iPad popover on iOS). **Defaults differ**: Android `'centered'`, iOS the standard action sheet. |
-| `anchor` | `ActionSheetAnchorInterface?` | ✅ | ✅ | A ref, or anything with `measureInWindow`. Without a measurable anchor an `'anchored'` sheet falls back to a centered dialog. |
-| `anchorAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of an `'anchored'` popup relative to its anchor. `'start'` (default) aligns leading edges, flipping in RTL. |
-| `userInterfaceStyle` | `'light' \| 'dark'` | ✅ | ✅ | Forces the appearance; defaults to following the system setting. |
-| `tintColor` | `string?` | ✅ | ✅ | Text color of non-destructive buttons. |
-| `cancelButtonTintColor` | `string?` | ✅ | ✅ | Text color of the cancel button; overrides `tintColor` for that row. |
-| `destructiveColor` | `string?` | ✅ | ✅ | Overrides the destructive row color (Android's palette error color, iOS system red). |
-| `buttonTextAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of button labels. Defaults to `'start'`, which follows layout direction. |
-
-Every options and button type is exported for typing your own wrappers —
-`ActionSheetOptionsInterface`, `PromptOptionsInterface`, `PromptResultInterface`
-and the interfaces they are composed from.
-
-### Platform notes
-
-- **Which gestures dismiss differs.** On iOS a sheet can only be tapped away if it has a `'cancel'` button, and a `'centered'` one never can — UIKit treats it as strictly modal. Android's centered dialog always cancels on a backdrop tap. Give a sheet a cancel button if you want that gesture everywhere.
-- **On iPad, a popover hides the cancel row**, since tapping outside already cancels. The index you receive is unaffected.
-- **Sheets stack.** Opening one over another puts it on top, and each resolves its own promise. Opening a sheet over a `Modal` does not dismiss the modal.
-- **Light or dark follows the system setting** unless `userInterfaceStyle` forces one, chosen when the sheet opens. It uses its own palette, so it looks the same in any host app.
-
-## Testing
-
-The package ships a Jest mock, so a screen that opens a sheet can be tested without the native module:
-
-```ts
-jest.mock('react-native-unified-action-sheet', () =>
-  require('react-native-unified-action-sheet/jest')
-);
-```
-
-Every sheet then resolves with no selection. To simulate a tap, queue the index it should resolve with — the pressed button's `onPress` runs as it would for real:
-
-```ts
-import { setNextButtonIndex } from 'react-native-unified-action-sheet/jest';
-
-setNextButtonIndex(0);
-await openTheSheet();
-```
-
-`setNextPromptResult({ buttonIndex, text })` does the same for a prompt. Prefer
-these over `mockResolvedValueOnce`, which replaces the implementation and so
-skips `onPress`. `dismissActionSheet` and `dismissAllActionSheets` are spies.
+- [API reference](docs/api.md): every option, per platform
+- [Behavior](docs/behavior.md): what each gesture resolves with, and platform differences
+- [Bottom sheets](docs/bottom-sheet.md): both platforms, and enabling Material on Android
+- [Testing](docs/testing.md): the shipped Jest mock
 
 ## Compatibility
 

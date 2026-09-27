@@ -4,6 +4,7 @@ type AnyMock = ReturnType<typeof jest.fn>;
 
 let mockNativeResponse: Promise<number>;
 let mockPromptResponse: Promise<{ buttonIndex: number; text: string }>;
+let mockMaterialEnabled: boolean;
 
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
@@ -14,6 +15,7 @@ jest.mock('../NativeUnifiedActionSheet', () => {
     default: {
       showActionSheetWithOptions: jest.fn(() => mockNativeResponse),
       showPromptWithOptions: jest.fn(() => mockPromptResponse),
+      getConstants: jest.fn(() => ({ isMaterialEnabled: mockMaterialEnabled })),
       dismissActionSheet: jest.fn(),
       dismissAllActionSheets: jest.fn(),
     },
@@ -27,6 +29,7 @@ type MockedReactNative = {
 type MockedNative = {
   showActionSheetWithOptions: AnyMock;
   showPromptWithOptions: AnyMock;
+  getConstants: AnyMock;
   dismissActionSheet: AnyMock;
   dismissAllActionSheets: AnyMock;
 };
@@ -46,6 +49,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockNativeResponse = Promise.resolve(0);
   mockPromptResponse = Promise.resolve({ buttonIndex: 0, text: '' });
+  mockMaterialEnabled = false;
+  (globalThis as { __DEV__?: boolean }).__DEV__ = true;
 });
 
 const buttons = (...labels: string[]) => labels.map((label) => ({ label }));
@@ -428,5 +433,104 @@ describe('showPromptWithOptions', () => {
       showPromptWithOptions({ options: [{ label: 'OK' }] })
     ).resolves.toBeUndefined();
     expect(mockedNative().showPromptWithOptions).not.toHaveBeenCalled();
+  });
+});
+
+describe("presentationStyle 'bottom'", () => {
+  const measurableAnchor = () => ({
+    measureInWindow: jest.fn(
+      (cb: (x: number, y: number, w: number, h: number) => void) =>
+        cb(1, 2, 3, 4)
+    ),
+  });
+
+  let warn: ReturnType<typeof jest.spyOn>;
+
+  beforeEach(() => {
+    warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('passes the style through and measures no anchor', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+    const anchor = measurableAnchor();
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+      anchor,
+    });
+
+    expect(anchor.measureInWindow).not.toHaveBeenCalled();
+    const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
+    expect(passed).toMatchObject({ presentationStyle: 'bottom' });
+    expect(passed).not.toHaveProperty('anchorRect');
+  });
+
+  it('warns once on Android when Material is not enabled, and still shows the sheet', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+    });
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+    });
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0]![0])).toContain(
+      'unifiedActionSheet.material=true'
+    );
+    expect(mockedNative().showActionSheetWithOptions).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not warn when Material is enabled', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+    mockMaterialEnabled = true;
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('does not warn on iOS, which needs no opt-in', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(mockedNative().getConstants).not.toHaveBeenCalled();
+  });
+
+  it('does not warn outside development', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+    (globalThis as { __DEV__?: boolean }).__DEV__ = false;
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('does not warn for the other styles', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+
+    await showActionSheetWithOptions({ options: buttons('A') });
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'centered',
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(mockedNative().getConstants).not.toHaveBeenCalled();
   });
 });

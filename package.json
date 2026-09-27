@@ -1,7 +1,7 @@
 {
   "name": "react-native-unified-action-sheet",
   "version": "0.2.0",
-  "description": "Unified action sheet for React Native: a native UIAlertController on iOS, a native AppCompatDialog on Android",
+  "description": "Unified native action sheet for React Native, one API on iOS and Android",
   "main": "./lib/commonjs/index.js",
   "sideEffects": false,
   "types": "./lib/typescript/commonjs/src/index.d.ts",
@@ -18,6 +18,7 @@
       }
     },
     "./package.json": "./package.json",
+    "./app.plugin.js": "./app.plugin.js",
     "./jest": {
       "types": "./jest/index.d.ts",
       "default": "./jest/index.js"
@@ -27,6 +28,8 @@
     "src",
     "lib",
     "jest",
+    "plugin",
+    "app.plugin.js",
     "android",
     "ios",
     "*.podspec",
@@ -56,6 +59,7 @@
     "action-sheet",
     "actionsheet",
     "action-sheet-ios",
+    "bottom-sheet",
     "turbomodule"
   ],
   "repository": {
@@ -97,8 +101,14 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
+    "@expo/config-plugins": "*",
     "react": "*",
     "react-native": ">=0.81.0"
+  },
+  "peerDependenciesMeta": {
+    "@expo/config-plugins": {
+      "optional": true
+    }
   },
   "workspaces": [
     "example"

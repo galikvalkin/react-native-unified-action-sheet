@@ -51,6 +51,9 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun getTypedExportedConstants(): MutableMap<String, Any> =
+    mutableMapOf("isMaterialEnabled" to BottomSheetPresenterFactory.isAvailable)
+
   override fun dismissActionSheet() {
     UiThreadUtil.runOnUiThread {
       openDialogs.lastOrNull()?.let { dialog ->
@@ -111,6 +114,9 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
           CenteredDialogPresenter
         }
       }
+      // Without Material compiled in there is no bottom sheet; JS has already
+      // warned in development, from the isMaterialEnabled constant.
+      PresentationStyle.BOTTOM -> BottomSheetPresenterFactory.create() ?: CenteredDialogPresenter
     }
 
     val dialog = presenter.build(activity, options) { presented, index ->

@@ -104,6 +104,33 @@ const showWithNativeModule = (
     )
     .catch(() => options.cancelButtonIndex ?? -1);
 
+let warnedMaterialDisabled = false;
+
+/// 'bottom' needs Material on Android, which the app opts into at build time.
+/// Without it the sheet falls back to a centered dialog; say so once, in
+/// development, since the fallback alone looks like the option was ignored.
+const warnIfBottomUnavailable = (
+  presentationStyle: ActionSheetOptionsInterface['presentationStyle']
+) => {
+  if (
+    !__DEV__ ||
+    warnedMaterialDisabled ||
+    Platform.OS !== 'android' ||
+    presentationStyle !== 'bottom' ||
+    nativeModule().getConstants().isMaterialEnabled
+  ) {
+    return;
+  }
+
+  warnedMaterialDisabled = true;
+  console.warn(
+    "react-native-unified-action-sheet: presentationStyle 'bottom' needs Material on Android, " +
+      'so this sheet falls back to a centered dialog. Set unifiedActionSheet.material=true in ' +
+      "android/gradle.properties, or add ['react-native-unified-action-sheet', { material: true }] " +
+      'to your Expo plugins, then rebuild the app.'
+  );
+};
+
 /// The anchor is measured in JS and sent across as a rect, so neither native
 /// module has to resolve a view: a ref's own measureInWindow is the supported
 /// way to do this on both architectures, unlike a react tag.
@@ -143,9 +170,14 @@ export const showActionSheetWithOptions = (
     return Promise.resolve(undefined);
   }
 
-  return withAnchorRect(wire, options.anchor)
-    .then(showWithNativeModule)
-    .then(press);
+  warnIfBottomUnavailable(options.presentationStyle);
+
+  // A bottom sheet has no anchor, so don't measure one: on iPad a rect would
+  // turn the sheet into an arrowed popover pointing at it.
+  const anchor =
+    options.presentationStyle === 'bottom' ? undefined : options.anchor;
+
+  return withAnchorRect(wire, anchor).then(showWithNativeModule).then(press);
 };
 
 export const dismissActionSheet = (): void => {

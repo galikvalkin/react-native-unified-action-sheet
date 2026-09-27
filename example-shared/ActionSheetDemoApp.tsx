@@ -4,8 +4,10 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
+  useColorScheme,
   View,
 } from 'react-native';
 import Modal from 'react-native-modal';
@@ -100,6 +102,34 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
         buttonTextAlignment: 'center',
       },
     },
+    {
+      label: 'Bottom sheet',
+      options: {
+        title: 'Bottom sheet',
+        message:
+          'A native sheet on iOS; a Material bottom sheet on Android when the app enables Material, which example/ does and example-legacy/ does not (there it falls back to a centered dialog, with a dev warning).',
+        options: [
+          option('Share'),
+          option('Duplicate'),
+          { label: 'Delete', style: 'destructive', onPress: press('Delete') },
+          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
+        ],
+        presentationStyle: 'bottom',
+      },
+    },
+    {
+      label: 'Bottom sheet, long list (drag to expand)',
+      options: {
+        title: 'Long bottom sheet',
+        message:
+          'This opens part-way; drag it up to see every row, with Cancel last.',
+        options: [
+          ...Array.from({ length: 16 }, (_, i) => option(`Option ${i + 1}`)),
+          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
+        ],
+        presentationStyle: 'bottom',
+      },
+    },
   ];
 };
 
@@ -114,6 +144,7 @@ const Section = ({
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const count = Children.count(children);
+  const palette = usePalette();
 
   return (
     <View style={styles.section}>
@@ -124,8 +155,10 @@ const Section = ({
         accessibilityState={{ expanded }}
         accessibilityLabel={`${title}, ${count} cases`}
       >
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionMeta}>
+        <Text style={[styles.sectionTitle, { color: palette.text }]}>
+          {title}
+        </Text>
+        <Text style={[styles.sectionMeta, { color: palette.text }]}>
           {expanded ? '\u25be' : `${count}  \u25b8`}
         </Text>
       </Pressable>
@@ -137,19 +170,69 @@ const Section = ({
   );
 };
 
+/// The screen follows the system appearance, like the sheets it opens. Without
+/// explicit colors, iOS dark mode renders default black text on its black
+/// window background.
+const palettes = {
+  light: {
+    background: '#FFFFFF',
+    text: '#1B1B1B',
+    secondaryText: '#444444',
+    border: '#00000022',
+    card: '#FFFFFF',
+    // iOS systemBlue and systemIndigo, as colored text on a tint of the same
+    // color: UIButton's "tinted" style.
+    tint: '#007AFF',
+    tintFill: 'rgba(0, 122, 255, 0.12)',
+    altTint: '#5856D6',
+    altTintFill: 'rgba(88, 86, 214, 0.12)',
+  },
+  dark: {
+    background: '#121212',
+    text: '#F2F2F2',
+    secondaryText: '#BBBBBB',
+    border: '#FFFFFF22',
+    card: '#1E1E1E',
+    tint: '#0A84FF',
+    tintFill: 'rgba(10, 132, 255, 0.2)',
+    altTint: '#5E5CE6',
+    altTintFill: 'rgba(94, 92, 230, 0.24)',
+  },
+};
+
+const usePalette = () =>
+  useColorScheme() === 'dark' ? palettes.dark : palettes.light;
+
 /// forwardRef, because the anchored case measures this button's own ref.
 const DemoButton = forwardRef<
   ComponentRef<typeof Pressable>,
   { label: string; onPress: () => void; tone?: 'alt' }
->(({ label, onPress, tone }, ref) => (
-  <Pressable
-    ref={ref}
-    style={[styles.button, tone === 'alt' && styles.altButton]}
-    onPress={onPress}
-  >
-    <Text style={styles.buttonText}>{label}</Text>
-  </Pressable>
-));
+>(({ label, onPress, tone }, ref) => {
+  const palette = usePalette();
+  const alt = tone === 'alt';
+
+  return (
+    <Pressable
+      ref={ref}
+      style={({ pressed }) => [
+        styles.button,
+        { backgroundColor: alt ? palette.altTintFill : palette.tintFill },
+        // Dims while held, like a UIKit button.
+        pressed && styles.buttonPressed,
+      ]}
+      onPress={onPress}
+    >
+      <Text
+        style={[
+          styles.buttonText,
+          { color: alt ? palette.altTint : palette.tint },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+});
 
 DemoButton.displayName = 'DemoButton';
 
@@ -160,6 +243,7 @@ const delay = (ms: number) =>
 
 export default function ActionSheetDemoApp() {
   const [lastResult, setLastResult] = useState<string>('none yet');
+  const palette = usePalette();
   const [isModalVisible, setModalVisible] = useState(false);
   const anchorRef = useRef<ComponentRef<typeof Pressable> | null>(null);
 
@@ -337,12 +421,23 @@ export default function ActionSheetDemoApp() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: palette.background }]}
+    >
+      <StatusBar
+        barStyle={palette === palettes.dark ? 'light-content' : 'dark-content'}
+        backgroundColor={palette.background}
+      />
       {/* Outside the ScrollView so the result of whatever you just tapped
           stays visible instead of scrolling away with the buttons. */}
-      <View style={styles.header}>
-        <Text style={styles.heading}>Unified Action Sheet</Text>
-        <Text style={styles.result} numberOfLines={2}>
+      <View style={[styles.header, { borderBottomColor: palette.border }]}>
+        <Text style={[styles.heading, { color: palette.text }]}>
+          Unified Action Sheet
+        </Text>
+        <Text
+          style={[styles.result, { color: palette.text }]}
+          numberOfLines={2}
+        >
           {lastResult}
         </Text>
       </View>
@@ -411,21 +506,20 @@ export default function ActionSheetDemoApp() {
         onBackdropPress={() => setModalVisible(false)}
         onBackButtonPress={() => setModalVisible(false)}
       >
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>A react-native-modal</Text>
-          <Text style={styles.modalText}>
+        <View style={[styles.modalCard, { backgroundColor: palette.card }]}>
+          <Text style={[styles.modalTitle, { color: palette.text }]}>
+            A react-native-modal
+          </Text>
+          <Text style={[styles.modalText, { color: palette.secondaryText }]}>
             Open the sheet from here. It must appear above this modal, and this
             modal must still be open underneath once the sheet closes.
           </Text>
-          <Pressable style={styles.button} onPress={showFromModal}>
-            <Text style={styles.buttonText}>Open action sheet</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.button, styles.altButton]}
+          <DemoButton label="Open action sheet" onPress={showFromModal} />
+          <DemoButton
+            label="Close modal"
             onPress={() => setModalVisible(false)}
-          >
-            <Text style={styles.buttonText}>Close modal</Text>
-          </Pressable>
+            tone="alt"
+          />
         </View>
       </Modal>
     </SafeAreaView>
@@ -441,7 +535,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#00000022',
     gap: 4,
   },
   content: {
@@ -481,21 +574,19 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   button: {
-    backgroundColor: '#6200EE',
-    borderRadius: 8,
-    paddingVertical: 11,
+    borderRadius: 12,
+    paddingVertical: 13,
     paddingHorizontal: 16,
   },
-  altButton: {
-    backgroundColor: '#018786',
+  buttonPressed: {
+    opacity: 0.55,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -503,10 +594,8 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1B1B1B',
   },
   modalText: {
     fontSize: 14,
-    color: '#444444',
   },
 });
