@@ -332,6 +332,21 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
   }
 
+  /// The JS runtime is going away: close every sheet, prompt and alert, but
+  /// resolve none of them. Their promises belong to the runtime being torn
+  /// down, and the list is shared, so stale entries must not outlive it.
+  @objc public func invalidate() {
+    let all = presentations
+    presentations.removeAll()
+    all.forEach { $0.discard() }
+
+    // As in dismissAll(): the lowest sheet's presenter dismisses it and
+    // everything stacked above it.
+    all.first { $0.controller.presentingViewController != nil }?
+      .controller.presentingViewController?
+      .dismiss(animated: false)
+  }
+
   @objc public func dismiss() {
     guard let presentation = presentations.last else { return }
 
@@ -378,6 +393,11 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       self.cancelButtonIndex = cancelButtonIndex
       self.currentText = currentText
       self.completion = completion
+    }
+
+    /// Drops the completion without calling it.
+    func discard() {
+      completion = nil
     }
 
     func resolve(_ index: Int) {

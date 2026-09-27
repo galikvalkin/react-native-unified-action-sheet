@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an optional `materialVersion`. `@expo/config-plugins` is an optional peer
   dependency.
 
+### Fixed
+
+- On iOS, a sheet, alert or prompt stayed on screen after a JS reload (pressing
+  `r` in Metro). It now closes on reload, as it already did on Android, and its
+  promise is left unresolved, since it belonged to the discarded runtime.
+
 ### Notes
 
 - Without the Material opt-in, `'bottom'` on Android falls back to the centered

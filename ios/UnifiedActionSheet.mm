@@ -1,11 +1,12 @@
 #import "UnifiedActionSheet.h"
 
+#import <React/RCTInvalidating.h>
 #import <RCTTypeSafety/RCTConvertHelpers.h>
 #import <UnifiedActionSheetSpec/UnifiedActionSheetSpec.h>
 
 #import "react_native_unified_action_sheet-Swift.h"
 
-@interface UnifiedActionSheet () <NativeUnifiedActionSheetSpec>
+@interface UnifiedActionSheet () <NativeUnifiedActionSheetSpec, RCTInvalidating>
 @end
 
 @implementation UnifiedActionSheet
@@ -131,6 +132,16 @@ RCT_EXPORT_METHOD(showPromptWithOptions
                                              completion:^(NSInteger buttonIndex, NSString *text) {
                                                resolve(@{@"buttonIndex" : @(buttonIndex), @"text" : text});
                                              }];
+  });
+}
+
+/// A reload (or any teardown of the JS runtime) replaces the app's root view,
+/// but the sheets are presented over it and would otherwise stay on screen.
+/// Android closes its dialogs in its own invalidate().
+- (void)invalidate
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [UnifiedActionSheetImpl.shared invalidate];
   });
 }
 
