@@ -1,6 +1,6 @@
 # react-native-unified-action-sheet
 
-Unified action sheet API for React Native: native action sheets, alerts, bottom sheets and prompts on iOS and Android.
+Unified native action sheet for React Native, one API on iOS and Android.
 
 | | Light | Dark |
 | :---: | :---: | :---: |

@@ -1,7 +1,7 @@
 {
   "name": "react-native-unified-action-sheet",
   "version": "0.2.0",
-  "description": "Unified action sheet for React Native: native action sheets, alerts, bottom sheets and prompts on iOS and Android",
+  "description": "Unified native action sheet for React Native, one API on iOS and Android",
   "main": "./lib/commonjs/index.js",
   "sideEffects": false,
   "types": "./lib/typescript/commonjs/src/index.d.ts",
