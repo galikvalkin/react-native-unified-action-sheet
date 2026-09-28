@@ -148,7 +148,8 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
       label: 'Preferred button (centered)',
       options: {
         title: 'Unsaved changes',
-        message: 'Save is the preferred button: bold on both platforms.',
+        message:
+          "Save is the preferred button: bold on Android, and iOS's own emphasis (a filled button from iOS 26).",
         options: [
           { label: 'Save', preferred: true, onPress: press('Save') },
           { label: 'Discard', style: 'destructive', onPress: press('Discard') },

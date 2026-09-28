@@ -2,9 +2,10 @@ export interface BaseButtonInterface {
   label: string;
   style?: 'cancel' | 'destructive';
   disabled?: boolean;
-  /// The default action: bold on Android and in iOS alerts, prompts and bottom
-  /// sheets. Only the first preferred button counts. UIKit ignores it in the
-  /// standard iOS action sheet, where the cancel button is already bold.
+  /// The default action, emphasized: bold on Android and in the iOS bottom
+  /// sheet; in iOS alerts and prompts UIKit's own preferred-action style (a
+  /// filled button from iOS 26, bold text before). Only the first preferred
+  /// button counts. UIKit ignores it in the standard iOS action sheet.
   preferred?: boolean;
 }
 

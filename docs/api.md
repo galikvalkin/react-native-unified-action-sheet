@@ -27,7 +27,7 @@ import {
 | `label` | `string` | The button's text. |
 | `style` | `'cancel' \| 'destructive'` | `'cancel'` renders a separated row and resolves on a backdrop tap or back. Only the first `'cancel'` counts. `'destructive'` uses the destructive color. |
 | `disabled` | `boolean` | Renders the row dimmed and ignores taps. Independent of `style`. |
-| `preferred` | `boolean` | The default action, shown bold. Only the first preferred button counts. On iOS it applies to centered alerts, prompts (where the return key presses it) and bottom sheets; UIKit ignores it in the standard action sheet, whose cancel button is already bold. |
+| `preferred` | `boolean` | The default action, emphasized. Only the first preferred button counts. On Android and in the iOS bottom sheet the row is bold. In iOS centered alerts and prompts it gets UIKit's own preferred-action style, a filled button from iOS 26 and bold text before, and in a prompt the return key presses it. UIKit ignores it in the standard action sheet. |
 | `onPress` | `() => void` | Runs when this button resolves the sheet. A prompt's receives `{ text, password? }`. |
 | `requiresText` | `boolean` | Prompts only: keeps the button disabled while a field is empty. |
 

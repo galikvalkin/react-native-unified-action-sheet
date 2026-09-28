@@ -36,9 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `preferred` on a button: the default action, shown bold. On iOS it is the
-  alert's `preferredAction` (so the return key presses it in a prompt) and a
-  semibold row in the bottom sheet; UIKit ignores it in the standard action
+- `preferred` on a button: the default action, emphasized. On iOS it is the
+  alert's `preferredAction`, drawn in UIKit's own style (a filled button from
+  iOS 26, bold text before), so the return key presses it in a prompt; in the
+  bottom sheet it is a semibold row; UIKit ignores it in the standard action
   sheet. On Android the row is bold, and in a prompt the keyboard's done key
   presses it.
 - `detents` for `presentationStyle: 'bottom'`: `'auto'`, `'medium'` and
