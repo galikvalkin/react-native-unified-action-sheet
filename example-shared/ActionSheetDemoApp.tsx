@@ -130,6 +130,36 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
         presentationStyle: 'bottom',
       },
     },
+    {
+      label: 'Bottom sheet, fits then expands (detents)',
+      options: {
+        title: 'Detents',
+        message:
+          "detents: ['auto', 'large'] opens at its own height, like a short list, and still drags up to full height.",
+        options: [
+          option('Share'),
+          option('Duplicate'),
+          option('Move'),
+          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
+        ],
+        presentationStyle: 'bottom',
+        detents: ['auto', 'large'],
+      },
+    },
+    {
+      label: 'Preferred button (centered)',
+      options: {
+        title: 'Unsaved changes',
+        message:
+          "Save is the preferred button: bold on Android, and iOS's own emphasis (a filled button from iOS 26).",
+        options: [
+          { label: 'Save', preferred: true, onPress: press('Save') },
+          { label: 'Discard', style: 'destructive', onPress: press('Discard') },
+          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
+        ],
+        presentationStyle: 'centered',
+      },
+    },
   ];
 };
 
@@ -250,13 +280,13 @@ export default function ActionSheetDemoApp() {
   const demoCases = useMemo(() => buildDemoCases(setLastResult), []);
 
   /// A button's own onPress reports what ran, so this only has to cover the
-  /// outcomes that press no button: a programmatic dismiss, and -1 when the
-  /// sheet had no cancel button to resolve.
+  /// outcomes that press no button: a programmatic dismiss, and a cancel
+  /// gesture (-1) on a sheet with no cancel button.
   const show = async (demo: DemoCase) => {
-    const buttonIndex = await showActionSheetWithOptions(demo.options);
+    const result = await showActionSheetWithOptions(demo.options);
 
-    if (buttonIndex == null || buttonIndex < 0) {
-      setLastResult(`${demo.label} → no selection`);
+    if (result.reason === 'dismissed' || result.buttonIndex < 0) {
+      setLastResult(`${demo.label} → ${result.reason}, no button`);
     }
   };
 
@@ -281,18 +311,18 @@ export default function ActionSheetDemoApp() {
 
     const results = await Promise.all([first, second]);
     setLastResult(
-      results.every((index) => index === undefined)
-        ? 'Dismiss all → both closed, no selection'
-        : `Dismiss all → unexpected ${results.join(', ')}`
+      results.every((result) => result.reason === 'dismissed')
+        ? 'Dismiss all → both dismissed'
+        : `Dismiss all → unexpected ${results.map((r) => r.reason).join(', ')}`
     );
   };
 
   const showAndDismiss = async () => {
-    // dismissActionSheet() closes the top-most sheet, and that resolves with
-    // no index rather than a selection.
+    // dismissActionSheet() closes the top-most sheet, which resolves as
+    // 'dismissed', with no index.
     setTimeout(() => dismissActionSheet(), 1500);
 
-    const buttonIndex = await showActionSheetWithOptions({
+    const result = await showActionSheetWithOptions({
       title: 'Auto-dismissed',
       message: 'Closing in 1.5s via dismissActionSheet().',
       options: [
@@ -311,15 +341,15 @@ export default function ActionSheetDemoApp() {
 
     // Only the programmatic dismiss reaches here; a tapped button reported
     // itself through onPress.
-    if (buttonIndex === undefined) {
-      setLastResult('Auto-dismiss → resolved with no selection');
+    if (result.reason === 'dismissed') {
+      setLastResult('Auto-dismiss → dismissed');
     }
   };
 
   const showAnchored = async () => {
     // A menu-style popup attached to this button. The ref is measured by the
     // library; without a measurable anchor it falls back to a centered dialog.
-    const buttonIndex = await showActionSheetWithOptions({
+    const result = await showActionSheetWithOptions({
       title: 'Anchored presentation',
       options: [
         { label: 'Share', onPress: () => setLastResult('Anchored → Share') },
@@ -337,8 +367,8 @@ export default function ActionSheetDemoApp() {
       anchor: anchorRef,
       anchorAlignment: 'center',
     });
-    if (buttonIndex == null || buttonIndex < 0) {
-      setLastResult('Anchored → no selection');
+    if (result.reason === 'dismissed' || result.buttonIndex < 0) {
+      setLastResult(`Anchored → ${result.reason}, no button`);
     }
   };
 
@@ -353,7 +383,8 @@ export default function ActionSheetDemoApp() {
       options: [
         {
           label: 'Save',
-          onPress: (text) => setLastResult(`Prompt → saved “${text}”`),
+          preferred: true,
+          onPress: ({ text }) => setLastResult(`Prompt → saved “${text}”`),
         },
         {
           label: 'Delete',
@@ -363,32 +394,70 @@ export default function ActionSheetDemoApp() {
         {
           label: 'Cancel',
           style: 'cancel',
-          onPress: (text) =>
+          onPress: ({ text }) =>
             setLastResult(`Prompt → cancelled, draft was “${text}”`),
         },
       ],
     });
 
-    if (result === undefined) setLastResult('Prompt → dismissed from code');
+    if (result.reason === 'dismissed') {
+      setLastResult(`Prompt → dismissed from code, draft was “${result.text}”`);
+    }
   };
 
   const showSecurePrompt = async () => {
     const result = await showPromptWithOptions({
       title: 'Enter passcode',
       placeholder: 'Passcode',
-      secureTextEntry: true,
+      type: 'secure-text',
       keyboardType: 'numeric',
       options: [
         {
           label: 'Unlock',
-          onPress: (text) =>
+          requiresText: true,
+          onPress: ({ text }) =>
             setLastResult(`Secure prompt → ${text.length} digits entered`),
         },
-        { label: 'Cancel', style: 'cancel' },
+        {
+          label: 'Cancel',
+          style: 'cancel',
+          onPress: () => setLastResult('Secure prompt → cancelled'),
+        },
       ],
     });
 
-    if (result === undefined) setLastResult('Secure prompt → dismissed');
+    if (result.reason === 'dismissed') {
+      setLastResult('Secure prompt → dismissed');
+    }
+  };
+
+  const showLoginPrompt = async () => {
+    // Two fields, as with React Native's Alert.prompt 'login-password'. Sign in
+    // stays disabled until both are filled, and is the preferred button, so
+    // the keyboard's return key presses it.
+    await showPromptWithOptions({
+      title: 'Sign in',
+      type: 'login-password',
+      placeholder: 'Email',
+      passwordPlaceholder: 'Password',
+      keyboardType: 'email-address',
+      options: [
+        {
+          label: 'Sign in',
+          preferred: true,
+          requiresText: true,
+          onPress: ({ text, password }) =>
+            setLastResult(
+              `Sign in → ${text}, ${password?.length ?? 0}-character password`
+            ),
+        },
+        {
+          label: 'Cancel',
+          style: 'cancel',
+          onPress: () => setLastResult('Sign in → cancelled'),
+        },
+      ],
+    });
   };
 
   const showFromModal = async () => {
@@ -396,7 +465,7 @@ export default function ActionSheetDemoApp() {
     // sheet is a dialog owned by the activity, so this is where a z-order bug
     // would show up: the sheet must appear ON TOP of the still-open modal,
     // not behind it.
-    const buttonIndex = await showActionSheetWithOptions({
+    const result = await showActionSheetWithOptions({
       title: 'Opened from inside a modal',
       message: 'This sheet must render above the modal, which stays open.',
       options: [
@@ -415,8 +484,8 @@ export default function ActionSheetDemoApp() {
         },
       ],
     });
-    if (buttonIndex == null || buttonIndex < 0) {
-      setLastResult('Sheet inside modal → no selection');
+    if (result.reason === 'dismissed' || result.buttonIndex < 0) {
+      setLastResult(`Sheet inside modal → ${result.reason}, no button`);
     }
   };
 
@@ -461,6 +530,11 @@ export default function ActionSheetDemoApp() {
           <DemoButton
             label="Secure numeric prompt"
             onPress={showSecurePrompt}
+            tone="alt"
+          />
+          <DemoButton
+            label="Sign in (login and password)"
+            onPress={showLoginPrompt}
             tone="alt"
           />
         </Section>

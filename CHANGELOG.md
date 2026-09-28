@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+
+- **Results carry a reason.** `showActionSheetWithOptions()` resolves
+  `{ reason, buttonIndex }` instead of a bare index, and
+  `showPromptWithOptions()` resolves `{ reason, buttonIndex, text, password? }`
+  instead of `{ buttonIndex, text }` or `undefined`. `reason` is `'selected'`,
+  `'cancelled'` (the cancel button, a backdrop tap, back or a swipe down) or
+  `'dismissed'` (closed from code or by a JS reload). A dismissal used to
+  resolve `undefined`; it now resolves `{ reason: 'dismissed', buttonIndex:
+  undefined }`, and a dismissed prompt keeps the text that was in its field.
+  The result types are discriminated unions on `reason`.
+
+  ```ts
+  // before
+  const index = await showActionSheetWithOptions(options);
+  if (index === undefined) { /* dismissed */ }
+
+  // after
+  const { reason, buttonIndex } = await showActionSheetWithOptions(options);
+  if (reason === 'dismissed') { /* dismissed */ }
+  ```
+- **Prompt `onPress` receives an object.** It is called with
+  `{ text, password? }` instead of the text string:
+  `onPress: ({ text }) => rename(text)`.
+- The Jest mock resolves the same shapes, deriving `reason` as the real module
+  does; `setNextPromptResult` accepts an optional `password`.
+
+### Added
+
+- `preferred` on a button: the default action, emphasized. On iOS it is the
+  alert's `preferredAction`, drawn in UIKit's own style (a filled button from
+  iOS 26, bold text before), so the return key presses it in a prompt; in the
+  bottom sheet it is a semibold row; UIKit ignores it in the standard action
+  sheet. On Android the row is bold, and in a prompt the keyboard's done key
+  presses it.
+- `detents` for `presentationStyle: 'bottom'`: `'auto'`, `'medium'` and
+  `'large'`. The sheet opens at the first and can be dragged to the others.
+- Prompt `type`: `'plain-text'`, `'secure-text'` or `'login-password'`, as in
+  React Native's `Alert.prompt`. `'login-password'` adds a masked password
+  field (`passwordPlaceholder`), resolves `password`, and marks both fields
+  for iOS AutoFill and Android autofill. `secureTextEntry` still works, as
+  `type: 'secure-text'`.
+- `requiresText` on a prompt button keeps it disabled while a field is empty.
+- New exported types: `ActionSheetResultInterface`, `ActionSheetDetent`,
+  `CloseReason`, `CloseResultInterface` and `PromptValuesInterface`.
+
+### Fixed
+
+- iOS: alerts and prompts were never freed after closing. Each action's handler
+  held its presentation, which held the alert, which held the action.
+
 ## [0.3.0]
 
 ### Added

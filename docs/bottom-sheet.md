@@ -16,6 +16,26 @@ await showActionSheetWithOptions({
 });
 ```
 
+## Heights
+
+`detents` sets the heights a bottom sheet can rest at. It opens at the first one listed and can be dragged to the others; swiping down below the lowest cancels it.
+
+| Detent | Height |
+| --- | --- |
+| `'auto'` | Fits the content (on iOS 15, half the screen) |
+| `'medium'` | Half the screen |
+| `'large'` | The full height below the status bar |
+
+```ts
+await showActionSheetWithOptions({
+  options: [...],
+  presentationStyle: 'bottom',
+  detents: ['medium', 'large'], // open at half height, drag up to full
+});
+```
+
+Without `detents`, a short list fits its content and a long one opens part-way and drags up to expand.
+
 ## Enabling Material (Android)
 
 The bottom sheet needs `com.google.android.material`, which this library does not add unless you ask for it.

@@ -41,7 +41,7 @@ await showActionSheetWithOptions({
 });
 ```
 
-The call resolves with the tapped button's index, and that button's `onPress` runs. A backdrop tap or back resolves the `'cancel'` button. The promise never rejects. See [Behavior](docs/behavior.md).
+The call resolves `{ reason, buttonIndex }`, and the tapped button's `onPress` runs. `reason` is `'selected'`, `'cancelled'` (the cancel button, a backdrop tap, back or a swipe) or `'dismissed'` (closed from code). The promise never rejects. See [Behavior](docs/behavior.md).
 
 ### Presentation styles
 
@@ -62,16 +62,36 @@ const result = await showPromptWithOptions({
   placeholder: 'New name',
   defaultValue: 'Untitled',
   options: [
-    { label: 'Save', onPress: (text) => rename(text) },
+    { label: 'Save', preferred: true, onPress: ({ text }) => rename(text) },
     { label: 'Cancel', style: 'cancel' },
   ],
 });
-// { buttonIndex, text }, or undefined after dismissActionSheet().
+// { reason, buttonIndex, text }
+```
+
+`type: 'login-password'` adds a password field, and `requiresText: true` keeps a button disabled until the fields are filled:
+
+```ts
+await showPromptWithOptions({
+  title: 'Sign in',
+  type: 'login-password',
+  placeholder: 'Email',
+  passwordPlaceholder: 'Password',
+  options: [
+    {
+      label: 'Sign in',
+      preferred: true,
+      requiresText: true,
+      onPress: ({ text, password }) => signIn(text, password),
+    },
+    { label: 'Cancel', style: 'cancel' },
+  ],
+});
 ```
 
 ### Dismissing from code
 
-`dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. Dismissed sheets resolve with `undefined`.
+`dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. They resolve with `reason: 'dismissed'`.
 
 ## Documentation
 

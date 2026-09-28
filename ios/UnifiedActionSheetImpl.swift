@@ -26,6 +26,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let tintColor = Self.color(options["tintColor"])
     let cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
     let destructiveColor = Self.color(options["destructiveColor"])
+    let preferredIndex = (options["preferredButtonIndex"] as? NSNumber)?.intValue
 
     guard let parent = Self.presentedViewController() else {
       completion(cancelButtonIndex)
@@ -46,6 +47,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         cancelButtonIndex: cancelButtonIndex,
         destructiveIndices: destructiveIndices,
         disabledIndices: disabledIndices,
+        preferredIndex: preferredIndex,
         tintColor: tintColor,
         cancelButtonTintColor: cancelButtonTintColor,
         destructiveColor: destructiveColor,
@@ -69,7 +71,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: cancelButtonIndex,
-      completion: { index, _ in completion(index) }
+      completion: { index, _, _ in completion(index) }
     )
 
     for (index, label) in labels.enumerated() {
@@ -77,7 +79,10 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       let style: UIAlertAction.Style =
         destructiveIndices.contains(index) ? .destructive : (isCancel ? .cancel : .default)
 
-      let action = UIAlertAction(title: label, style: style) { [weak self] _ in
+      // Weak: the presentation holds the alert, which holds this handler.
+      let action = UIAlertAction(title: label, style: style) { [weak self, weak presentation] _ in
+        guard let presentation else { return }
+
         self?.finish(presentation, index: index)
       }
 
@@ -96,6 +101,12 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         action.setValue(color, forKey: "titleTextColor")
       }
       alert.addAction(action)
+    }
+
+    // UIKit only honors a preferred action in the alert style; the action
+    // sheet already bolds its cancel button.
+    if isCentered, let preferredIndex, alert.actions.indices.contains(preferredIndex) {
+      alert.preferredAction = alert.actions[preferredIndex]
     }
 
     alert.view.tintColor = tintColor
@@ -140,7 +151,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
   /// sheet, and a prompt is inherently a centered, modal question.
   @objc public func showPrompt(
     options: NSDictionary,
-    completion: @escaping (Int, String) -> Void
+    completion: @escaping (Int, String, String) -> Void
   ) {
     let labels = options["options"] as? [String] ?? []
     let cancelButtonIndex = (options["cancelButtonIndex"] as? NSNumber)?.intValue ?? -1
@@ -153,9 +164,14 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let tintColor = Self.color(options["tintColor"])
     let cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
     let destructiveColor = Self.color(options["destructiveColor"])
+    let preferredIndex = (options["preferredButtonIndex"] as? NSNumber)?.intValue
+    let textRequiredIndices = Set(
+      (options["textRequiredButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
+    )
+    let type = options["type"] as? String ?? "plain-text"
 
     guard let parent = Self.presentedViewController() else {
-      completion(cancelButtonIndex, "")
+      completion(cancelButtonIndex, "", "")
 
       return
     }
@@ -169,15 +185,35 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     alert.addTextField { field in
       field.placeholder = Self.text(options["placeholder"])
       field.text = Self.text(options["defaultValue"])
-      field.isSecureTextEntry = (options["secureTextEntry"] as? NSNumber)?.boolValue ?? false
+      field.isSecureTextEntry = type == "secure-text"
       field.keyboardType = Self.keyboardType(options["keyboardType"])
+      if type == "login-password" {
+        field.textContentType = .username
+      }
+    }
+
+    // As in React Native's Alert.prompt: a secure field below the login one.
+    // The content types let Password AutoFill offer saved credentials.
+    if type == "login-password" {
+      alert.addTextField { field in
+        field.placeholder = Self.text(options["passwordPlaceholder"])
+        field.isSecureTextEntry = true
+        field.textContentType = .password
+      }
     }
 
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: cancelButtonIndex,
       // Weak, or the presentation would retain the controller it is stored on.
-      currentText: { [weak alert] in alert?.textFields?.first?.text ?? "" },
+      currentValues: { [weak alert] in
+        let fields = alert?.textFields ?? []
+
+        return (
+          fields.first?.text ?? "",
+          fields.count > 1 ? (fields[1].text ?? "") : ""
+        )
+      },
       completion: completion
     )
 
@@ -186,7 +222,10 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       let style: UIAlertAction.Style =
         destructiveIndices.contains(index) ? .destructive : (isCancel ? .cancel : .default)
 
-      let action = UIAlertAction(title: label, style: style) { [weak self] _ in
+      // Weak: the presentation holds the alert, which holds this handler.
+      let action = UIAlertAction(title: label, style: style) { [weak self, weak presentation] _ in
+        guard let presentation else { return }
+
         self?.finish(presentation, index: index)
       }
 
@@ -201,6 +240,29 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         action.setValue(color, forKey: "titleTextColor")
       }
       alert.addAction(action)
+    }
+
+    // Bold, and triggered by the keyboard's return key.
+    if let preferredIndex, alert.actions.indices.contains(preferredIndex) {
+      alert.preferredAction = alert.actions[preferredIndex]
+    }
+
+    // requiresText: those buttons stay disabled while any field is empty.
+    if !textRequiredIndices.isEmpty {
+      let update: () -> Void = { [weak alert] in
+        guard let alert else { return }
+
+        let filled = (alert.textFields ?? []).allSatisfy { !($0.text ?? "").isEmpty }
+        for index in textRequiredIndices where alert.actions.indices.contains(index) {
+          alert.actions[index].isEnabled = filled && !disabledIndices.contains(index)
+        }
+      }
+
+      alert.textFields?.forEach { field in
+        field.addAction(UIAction { _ in update() }, for: .editingChanged)
+      }
+      // A defaultValue may already satisfy it.
+      update()
     }
 
     alert.view.tintColor = tintColor
@@ -222,6 +284,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     cancelButtonIndex: Int,
     destructiveIndices: Set<Int>,
     disabledIndices: Set<Int>,
+    preferredIndex: Int?,
     tintColor: UIColor?,
     cancelButtonTintColor: UIColor?,
     destructiveColor: UIColor?,
@@ -232,7 +295,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         index: index,
         label: label,
         isDestructive: destructiveIndices.contains(index),
-        isEnabled: !disabledIndices.contains(index)
+        isEnabled: !disabledIndices.contains(index),
+        isPreferred: index == preferredIndex
       )
     }
 
@@ -249,7 +313,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: sheet,
       cancelButtonIndex: cancelButtonIndex,
-      completion: { index, _ in completion(index) }
+      completion: { index, _, _ in completion(index) }
     )
 
     // Weak: the presentation holds the sheet, which holds this closure.
@@ -278,16 +342,27 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
       let bounds = parent.view.window?.bounds ?? parent.view.bounds
       let fitting = sheet.fittingHeight(width: bounds.width)
+      let requested = options["detents"] as? [String] ?? []
 
-      // A short list opens at its own height; a long one opens at half height
-      // and drags up to expand, like the Android sheet. Fitting the content
-      // needs a custom detent, iOS 16+; iOS 15 opens at half height.
-      if #available(iOS 16.0, *), fitting <= bounds.height / 2 {
-        controller.detents = [
-          .custom(identifier: .init("unifiedActionSheet.content")) { context in
-            min(fitting, context.maximumDetentValue)
-          },
-        ]
+      if !requested.isEmpty {
+        // The caller's heights; it opens at the first. Duplicates collapse,
+        // e.g. 'auto' and 'medium' on iOS 15, where 'auto' is half height.
+        var detents: [UISheetPresentationController.Detent] = []
+        var identifiers: [UISheetPresentationController.Detent.Identifier] = []
+        for name in requested {
+          let (detent, identifier) = Self.detent(named: name, fitting: fitting)
+          guard !identifiers.contains(identifier) else { continue }
+
+          detents.append(detent)
+          identifiers.append(identifier)
+        }
+        controller.detents = detents
+        controller.selectedDetentIdentifier = identifiers.first
+      } else if #available(iOS 16.0, *), fitting <= bounds.height / 2 {
+        // A short list opens at its own height; a long one opens at half
+        // height and drags up to expand, like the Android sheet. Fitting the
+        // content needs a custom detent, iOS 16+; iOS 15 opens at half height.
+        controller.detents = [Self.detent(named: "auto", fitting: fitting).0]
       } else {
         controller.detents = [.medium(), .large()]
       }
@@ -374,24 +449,45 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     presentation.resolve(index)
   }
 
+  /// 'auto' fits the content (iOS 16+; half height on iOS 15), 'medium' is
+  /// half height, 'large' is full height.
+  private static func detent(
+    named name: String,
+    fitting: CGFloat
+  ) -> (UISheetPresentationController.Detent, UISheetPresentationController.Detent.Identifier) {
+    switch name {
+    case "large":
+      return (.large(), .large)
+    case "auto":
+      if #available(iOS 16.0, *) {
+        let identifier = UISheetPresentationController.Detent.Identifier("unifiedActionSheet.content")
+
+        return (.custom(identifier: identifier) { min(fitting, $0.maximumDetentValue) }, identifier)
+      }
+      return (.medium(), .medium)
+    default:
+      return (.medium(), .medium)
+    }
+  }
+
   private final class Presentation {
     /// A UIAlertController, or the bottom sheet on iPhone.
     let controller: UIViewController
     let cancelButtonIndex: Int
-    /// Read at resolve time, not at creation: the value that matters is
-    /// whatever is in the field when the prompt closes. Sheets pass a constant.
-    private let currentText: () -> String
-    private var completion: ((Int, String) -> Void)?
+    /// Read at resolve time, not at creation: the values that matter are
+    /// whatever is in the fields when the prompt closes. Sheets pass constants.
+    private let currentValues: () -> (String, String)
+    private var completion: ((Int, String, String) -> Void)?
 
     init(
       controller: UIViewController,
       cancelButtonIndex: Int,
-      currentText: @escaping () -> String = { "" },
-      completion: @escaping (Int, String) -> Void
+      currentValues: @escaping () -> (String, String) = { ("", "") },
+      completion: @escaping (Int, String, String) -> Void
     ) {
       self.controller = controller
       self.cancelButtonIndex = cancelButtonIndex
-      self.currentText = currentText
+      self.currentValues = currentValues
       self.completion = completion
     }
 
@@ -404,7 +500,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       guard let completion else { return }
 
       self.completion = nil
-      completion(index, currentText())
+      let (text, password) = currentValues()
+      completion(index, text, password)
     }
   }
 

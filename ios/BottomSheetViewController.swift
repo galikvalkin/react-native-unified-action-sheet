@@ -10,6 +10,8 @@ final class BottomSheetViewController: UIViewController {
     let label: String
     let isDestructive: Bool
     let isEnabled: Bool
+    /// Semibold, like the preferred action of an alert.
+    let isPreferred: Bool
   }
 
   private let sheetTitle: String?
@@ -168,7 +170,7 @@ final class BottomSheetViewController: UIViewController {
     config.titleAlignment = .leading
     config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
       var attributes = attributes
-      attributes.font = UIFont.preferredFont(forTextStyle: .body).withWeight(isCancel ? .semibold : .regular)
+      attributes.font = UIFont.preferredFont(forTextStyle: .body).withWeight(isCancel || row.isPreferred ? .semibold : .regular)
 
       return attributes
     }

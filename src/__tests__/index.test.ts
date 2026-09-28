@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 type AnyMock = ReturnType<typeof jest.fn>;
 
 let mockNativeResponse: Promise<number>;
-let mockPromptResponse: Promise<{ buttonIndex: number; text: string }>;
+let mockPromptResponse: Promise<{
+  buttonIndex: number;
+  text: string;
+  password: string;
+}>;
 let mockMaterialEnabled: boolean;
 
 jest.mock('react-native', () => ({
@@ -48,7 +52,11 @@ const mockedNative = (): MockedNative =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockNativeResponse = Promise.resolve(0);
-  mockPromptResponse = Promise.resolve({ buttonIndex: 0, text: '' });
+  mockPromptResponse = Promise.resolve({
+    buttonIndex: 0,
+    text: '',
+    password: '',
+  });
   mockMaterialEnabled = false;
   (globalThis as { __DEV__?: boolean }).__DEV__ = true;
 });
@@ -60,12 +68,12 @@ describe('iOS', () => {
     const { showActionSheetWithOptions } = loadIndex('ios');
     mockNativeResponse = Promise.resolve(1);
 
-    const index = await showActionSheetWithOptions({
+    const result = await showActionSheetWithOptions({
       options: buttons('A', 'Cancel'),
     });
 
     expect(mockedNative().showActionSheetWithOptions).toHaveBeenCalledTimes(1);
-    expect(index).toBe(1);
+    expect(result).toEqual({ reason: 'selected', buttonIndex: 1 });
   });
 
   it('measures a ref anchor and forwards it as a rect', async () => {
@@ -224,16 +232,36 @@ describe('button flattening', () => {
 });
 
 describe('promise API', () => {
-  it('resolves with the tapped index', async () => {
+  it('resolves the tapped index as selected', async () => {
     const { showActionSheetWithOptions } = loadIndex('android');
     mockNativeResponse = Promise.resolve(1);
 
     await expect(
       showActionSheetWithOptions({ options: buttons('A', 'B') })
-    ).resolves.toBe(1);
+    ).resolves.toEqual({ reason: 'selected', buttonIndex: 1 });
   });
 
-  it('resolves undefined when dismissed programmatically', async () => {
+  it("reports the cancel button's index as cancelled", async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+    mockNativeResponse = Promise.resolve(1);
+
+    await expect(
+      showActionSheetWithOptions({
+        options: [{ label: 'A' }, { label: 'Cancel', style: 'cancel' }],
+      })
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: 1 });
+  });
+
+  it('reports a cancel gesture with no cancel button as cancelled at -1', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+    mockNativeResponse = Promise.resolve(-1);
+
+    await expect(
+      showActionSheetWithOptions({ options: buttons('A', 'B') })
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: -1 });
+  });
+
+  it('resolves as dismissed, with no index, when dismissed programmatically', async () => {
     const { showActionSheetWithOptions } = loadIndex('android');
     mockNativeResponse = Promise.resolve(-2);
 
@@ -241,10 +269,10 @@ describe('promise API', () => {
       showActionSheetWithOptions({
         options: [{ label: 'A' }, { label: 'Cancel', style: 'cancel' }],
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ reason: 'dismissed', buttonIndex: undefined });
   });
 
-  it('resolves the cancel index instead of rejecting', async () => {
+  it('resolves as cancelled instead of rejecting', async () => {
     const { showActionSheetWithOptions } = loadIndex('android');
     mockNativeResponse = Promise.reject(new Error('E_NO_ACTIVITY'));
 
@@ -252,7 +280,7 @@ describe('promise API', () => {
       showActionSheetWithOptions({
         options: [{ label: 'A' }, { label: 'Cancel', style: 'cancel' }],
       })
-    ).resolves.toBe(1);
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: 1 });
   });
 
   it('resolves -1 on rejection when there is no cancel button', async () => {
@@ -261,15 +289,15 @@ describe('promise API', () => {
 
     await expect(
       showActionSheetWithOptions({ options: buttons('A', 'B') })
-    ).resolves.toBe(-1);
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: -1 });
   });
 
-  it('resolves undefined on unsupported platforms', async () => {
+  it('resolves as dismissed on unsupported platforms', async () => {
     const { showActionSheetWithOptions } = loadIndex('web' as 'ios');
 
     await expect(
       showActionSheetWithOptions({ options: buttons('A') })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ reason: 'dismissed', buttonIndex: undefined });
     expect(mockedNative().showActionSheetWithOptions).not.toHaveBeenCalled();
   });
 });
@@ -347,7 +375,7 @@ describe('per-button onPress', () => {
           { label: 'Cancel', style: 'cancel', onPress: onCancel },
         ],
       })
-    ).resolves.toBe(1);
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: 1 });
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
@@ -358,7 +386,7 @@ describe('per-button onPress', () => {
 
     await expect(
       showActionSheetWithOptions({ options: [{ label: 'A', onPress }] })
-    ).resolves.toBe(-1);
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: -1 });
     expect(onPress).not.toHaveBeenCalled();
   });
 });
@@ -385,28 +413,41 @@ describe('showPromptWithOptions', () => {
       cancelButtonIndex: 3,
       destructiveButtonIndices: [1],
       disabledButtonIndices: [2],
+      type: 'plain-text',
     });
   });
 
-  it('resolves the index and the text, and passes the text to onPress', async () => {
+  it('resolves the index, reason and text, and passes the text to onPress', async () => {
     const { showPromptWithOptions } = loadIndex('ios');
     const onPress = jest.fn();
-    mockPromptResponse = Promise.resolve({ buttonIndex: 0, text: 'typed' });
+    mockPromptResponse = Promise.resolve({
+      buttonIndex: 0,
+      text: 'typed',
+      password: '',
+    });
 
     await expect(
       showPromptWithOptions({ options: [{ label: 'OK', onPress }] })
-    ).resolves.toEqual({ buttonIndex: 0, text: 'typed' });
-    expect(onPress).toHaveBeenCalledWith('typed');
+    ).resolves.toEqual({ reason: 'selected', buttonIndex: 0, text: 'typed' });
+    expect(onPress).toHaveBeenCalledWith({ text: 'typed' });
   });
 
-  it('resolves undefined for a programmatic dismiss and runs no handler', async () => {
+  it('keeps the draft on a programmatic dismiss and runs no handler', async () => {
     const { showPromptWithOptions } = loadIndex('ios');
     const onPress = jest.fn();
-    mockPromptResponse = Promise.resolve({ buttonIndex: -2, text: 'draft' });
+    mockPromptResponse = Promise.resolve({
+      buttonIndex: -2,
+      text: 'draft',
+      password: '',
+    });
 
     await expect(
       showPromptWithOptions({ options: [{ label: 'OK', onPress }] })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+      text: 'draft',
+    });
     expect(onPress).not.toHaveBeenCalled();
   });
 
@@ -422,16 +463,20 @@ describe('showPromptWithOptions', () => {
           { label: 'Cancel', style: 'cancel', onPress },
         ],
       })
-    ).resolves.toEqual({ buttonIndex: 1, text: '' });
-    expect(onPress).toHaveBeenCalledWith('');
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: 1, text: '' });
+    expect(onPress).toHaveBeenCalledWith({ text: '' });
   });
 
-  it('resolves undefined on an unsupported platform without calling native', async () => {
+  it('resolves as dismissed on an unsupported platform without calling native', async () => {
     const { showPromptWithOptions } = loadIndex('web' as 'ios');
 
     await expect(
       showPromptWithOptions({ options: [{ label: 'OK' }] })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+      text: '',
+    });
     expect(mockedNative().showPromptWithOptions).not.toHaveBeenCalled();
   });
 });
@@ -532,5 +577,121 @@ describe("presentationStyle 'bottom'", () => {
 
     expect(warn).not.toHaveBeenCalled();
     expect(mockedNative().getConstants).not.toHaveBeenCalled();
+  });
+});
+
+describe('preferred button', () => {
+  it('sends the first preferred button, for sheets and prompts', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+    const options = [
+      { label: 'A' },
+      { label: 'B', preferred: true },
+      { label: 'C', preferred: true },
+    ];
+
+    await showActionSheetWithOptions({ options });
+    await showPromptWithOptions({ options });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ preferredButtonIndex: 1 });
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ preferredButtonIndex: 1 });
+  });
+
+  it('sends nothing when no button is preferred', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+
+    await showActionSheetWithOptions({ options: buttons('A', 'B') });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).not.toHaveProperty('preferredButtonIndex');
+  });
+});
+
+describe('detents', () => {
+  it('passes them through to the native side', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      presentationStyle: 'bottom',
+      detents: ['medium', 'large'],
+    });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ detents: ['medium', 'large'] });
+  });
+});
+
+describe('prompt types', () => {
+  it('maps secureTextEntry onto the secure-text type', async () => {
+    const { showPromptWithOptions } = loadIndex('ios');
+
+    await showPromptWithOptions({
+      options: buttons('OK'),
+      secureTextEntry: true,
+    });
+
+    const [passed] = mockedNative().showPromptWithOptions.mock.calls[0]!;
+    expect(passed).toMatchObject({ type: 'secure-text' });
+    expect(passed).not.toHaveProperty('secureTextEntry');
+  });
+
+  it('lets an explicit type win over secureTextEntry', async () => {
+    const { showPromptWithOptions } = loadIndex('ios');
+
+    await showPromptWithOptions({
+      options: buttons('OK'),
+      secureTextEntry: true,
+      type: 'plain-text',
+    });
+
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ type: 'plain-text' });
+  });
+
+  it('resolves and hands over the password for login-password', async () => {
+    const { showPromptWithOptions } = loadIndex('android');
+    const onPress = jest.fn();
+    mockPromptResponse = Promise.resolve({
+      buttonIndex: 0,
+      text: 'ann',
+      password: 's3cret',
+    });
+
+    await expect(
+      showPromptWithOptions({
+        type: 'login-password',
+        options: [{ label: 'Sign in', onPress }, { label: 'Cancel' }],
+      })
+    ).resolves.toEqual({
+      reason: 'selected',
+      buttonIndex: 0,
+      text: 'ann',
+      password: 's3cret',
+    });
+    expect(onPress).toHaveBeenCalledWith({ text: 'ann', password: 's3cret' });
+  });
+
+  it('sends the buttons that require text, and omits the set when none do', async () => {
+    const { showPromptWithOptions } = loadIndex('ios');
+
+    await showPromptWithOptions({
+      options: [
+        { label: 'Save', requiresText: true },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
+    await showPromptWithOptions({ options: buttons('OK') });
+
+    const calls = mockedNative().showPromptWithOptions.mock.calls;
+    expect(calls[0]![0]).toMatchObject({ textRequiredButtonIndices: [0] });
+    expect(calls[1]![0]).not.toHaveProperty('textRequiredButtonIndices');
   });
 });

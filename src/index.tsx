@@ -1,12 +1,26 @@
 import { Platform } from 'react-native';
 
 import type { Spec } from './NativeUnifiedActionSheet';
-import type { ActionSheetOptionsInterface } from './action-sheet-options.interface';
+import type {
+  ActionSheetOptionsInterface,
+  ActionSheetResultInterface,
+} from './action-sheet-options.interface';
+import type {
+  BaseButtonInterface,
+  CloseResultInterface,
+} from './common-options.interface';
+import type {
+  PromptButtonInterface,
+  PromptOptionsInterface,
+  PromptResultInterface,
+} from './prompt-options.interface';
 
 export type {
   BaseButtonInterface,
   BaseOptionsInterface,
   BaseAndroidOptionsInterface,
+  CloseReason,
+  CloseResultInterface,
 } from './common-options.interface';
 
 export type {
@@ -15,11 +29,7 @@ export type {
   PromptAndroidOptionsInterface,
   PromptOptionsInterface,
   PromptResultInterface,
-} from './prompt-options.interface';
-import type { BaseButtonInterface } from './common-options.interface';
-import type {
-  PromptOptionsInterface,
-  PromptResultInterface,
+  PromptValuesInterface,
 } from './prompt-options.interface';
 
 export type {
@@ -27,20 +37,27 @@ export type {
   ActionSheetButtonInterface,
   ActionSheetCommonOptionsInterface,
   ActionSheetAndroidOptionsInterface,
+  ActionSheetDetent,
   ActionSheetOptionsInterface,
+  ActionSheetResultInterface,
 } from './action-sheet-options.interface';
 
 const DISMISSED_BY_API = -2;
 
 /// The native wire format is index-based; the public API is not. Nothing below
 /// index.tsx knows buttons are described as objects.
-type WireOptions = Omit<ActionSheetOptionsInterface, 'options' | 'anchor'> & {
+type WireButtons = {
   options: string[];
   cancelButtonIndex?: number;
   destructiveButtonIndices?: number[];
   disabledButtonIndices?: number[];
-  anchorRect?: { x: number; y: number; width: number; height: number };
+  preferredButtonIndex?: number;
 };
+
+type WireOptions = Omit<ActionSheetOptionsInterface, 'options' | 'anchor'> &
+  WireButtons & {
+    anchorRect?: { x: number; y: number; width: number; height: number };
+  };
 
 const nativeModule = (): Spec =>
   require('./NativeUnifiedActionSheet').default as Spec;
@@ -58,20 +75,25 @@ const toWireOptions = ({
   ...toWireButtons(options),
 });
 
-type WirePromptOptions = Omit<PromptOptionsInterface, 'options'> & {
-  options: string[];
-  cancelButtonIndex?: number;
-  destructiveButtonIndices?: number[];
-  disabledButtonIndices?: number[];
-};
+type WirePromptOptions = Omit<
+  PromptOptionsInterface,
+  'options' | 'secureTextEntry'
+> &
+  WireButtons & {
+    type: NonNullable<PromptOptionsInterface['type']>;
+    textRequiredButtonIndices?: number[];
+  };
 
 /// Same flattening as the sheet: labels plus index sets. Kept generic over the
 /// button shape so the two APIs cannot disagree about what 'cancel' means.
-const toWireButtons = (buttons: ReadonlyArray<BaseButtonInterface>) => {
+const toWireButtons = (
+  buttons: ReadonlyArray<BaseButtonInterface>
+): WireButtons => {
   const labels: string[] = [];
   const destructive: number[] = [];
   const disabled: number[] = [];
   let cancelButtonIndex: number | undefined;
+  let preferredButtonIndex: number | undefined;
 
   buttons.forEach((button, index) => {
     labels.push(button.label);
@@ -81,6 +103,9 @@ const toWireButtons = (buttons: ReadonlyArray<BaseButtonInterface>) => {
       cancelButtonIndex = index;
     }
     if (button.disabled) disabled.push(index);
+    if (button.preferred && preferredButtonIndex == null) {
+      preferredButtonIndex = index;
+    }
   });
 
   return {
@@ -90,19 +115,41 @@ const toWireButtons = (buttons: ReadonlyArray<BaseButtonInterface>) => {
       ? {}
       : { destructiveButtonIndices: destructive }),
     ...(disabled.length === 0 ? {} : { disabledButtonIndices: disabled }),
+    ...(preferredButtonIndex == null ? {} : { preferredButtonIndex }),
   };
+};
+
+/// Native sides only report an index: DISMISSED_BY_API, the cancel button's
+/// index, -1 (a cancel gesture with no cancel button), or another button.
+const toCloseResult = (
+  buttonIndex: number,
+  cancelButtonIndex: number | undefined
+): CloseResultInterface => {
+  if (buttonIndex === DISMISSED_BY_API) {
+    return { reason: 'dismissed', buttonIndex: undefined };
+  }
+  if (buttonIndex < 0 || buttonIndex === cancelButtonIndex) {
+    return { reason: 'cancelled', buttonIndex };
+  }
+
+  return { reason: 'selected', buttonIndex };
+};
+
+const DISMISSED: CloseResultInterface = {
+  reason: 'dismissed',
+  buttonIndex: undefined,
 };
 
 const showWithNativeModule = (
   options: WireOptions
-): Promise<number | undefined> =>
+): Promise<ActionSheetResultInterface> =>
   nativeModule()
     .showActionSheetWithOptions(options)
-    // A programmatic dismiss resolves with no index rather than a selection.
+    // A native failure reads as a cancellation rather than a rejection.
+    .catch(() => options.cancelButtonIndex ?? -1)
     .then((buttonIndex) =>
-      buttonIndex === DISMISSED_BY_API ? undefined : buttonIndex
-    )
-    .catch(() => options.cancelButtonIndex ?? -1);
+      toCloseResult(buttonIndex, options.cancelButtonIndex)
+    );
 
 let warnedMaterialDisabled = false;
 
@@ -156,18 +203,20 @@ const withAnchorRect = (
 
 export const showActionSheetWithOptions = (
   options: ActionSheetOptionsInterface
-): Promise<number | undefined> => {
+): Promise<ActionSheetResultInterface> => {
   const wire = toWireOptions(options);
 
-  // -1 and undefined index nothing, so optional chaining covers both.
-  const press = (buttonIndex: number | undefined) => {
-    if (buttonIndex != null) options.options[buttonIndex]?.onPress?.();
+  // -1 and a dismissal index nothing, so optional chaining covers both.
+  const press = (result: ActionSheetResultInterface) => {
+    if (result.buttonIndex != null) {
+      options.options[result.buttonIndex]?.onPress?.();
+    }
 
-    return buttonIndex;
+    return result;
   };
 
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
-    return Promise.resolve(undefined);
+    return Promise.resolve(DISMISSED);
   }
 
   warnIfBottomUnavailable(options.presentationStyle);
@@ -186,8 +235,8 @@ export const dismissActionSheet = (): void => {
   }
 };
 
-/// Closes every open sheet, not just the top-most one. Each resolves with no
-/// index, exactly as dismissActionSheet() does.
+/// Closes every open sheet, not just the top-most one. Each resolves as
+/// 'dismissed', exactly as with dismissActionSheet().
 export const dismissAllActionSheets = (): void => {
   if (Platform.OS === 'ios' || Platform.OS === 'android') {
     nativeModule().dismissAllActionSheets();
@@ -200,25 +249,49 @@ export const dismissAllActionSheets = (): void => {
 /// silent no-op on Android, which is the gap this fills.
 export const showPromptWithOptions = (
   options: PromptOptionsInterface
-): Promise<PromptResultInterface | undefined> => {
-  const { options: buttons, ...rest } = options;
-  const wire: WirePromptOptions = { ...rest, ...toWireButtons(buttons) };
+): Promise<PromptResultInterface> => {
+  const { options: buttons, secureTextEntry, type, ...rest } = options;
+  const textRequired = buttons.flatMap(
+    (button: PromptButtonInterface, index) =>
+      button.requiresText ? [index] : []
+  );
+  const wire: WirePromptOptions = {
+    ...rest,
+    ...toWireButtons(buttons),
+    // One field of truth for the native sides: the old boolean maps onto type.
+    type: type ?? (secureTextEntry ? 'secure-text' : 'plain-text'),
+    ...(textRequired.length === 0
+      ? {}
+      : { textRequiredButtonIndices: textRequired }),
+  };
+  const hasPassword = wire.type === 'login-password';
 
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
-    return Promise.resolve(undefined);
+    return Promise.resolve({ ...DISMISSED, text: '' });
   }
 
   return nativeModule()
     .showPromptWithOptions(wire)
-    .then((result) =>
-      // A programmatic dismiss resolves with no selection, matching the sheet.
-      result.buttonIndex === DISMISSED_BY_API ? undefined : result
-    )
-    .catch(() => ({ buttonIndex: wire.cancelButtonIndex ?? -1, text: '' }))
+    .catch(() => ({
+      buttonIndex: wire.cancelButtonIndex ?? -1,
+      text: '',
+      password: '',
+    }))
+    .then(({ buttonIndex, text, password }): PromptResultInterface => ({
+      ...toCloseResult(buttonIndex, wire.cancelButtonIndex),
+      text,
+      // Even a dismissal carries the fields, so a draft is recoverable.
+      ...(hasPassword ? { password } : {}),
+    }))
     .then((result) => {
-      // The text goes to the handler, so a caller using onPress alone never
+      // The values go to the handler, so a caller using onPress alone never
       // has to read the resolved value.
-      if (result) buttons[result.buttonIndex]?.onPress?.(result.text);
+      if (result.buttonIndex != null) {
+        const { text, password } = result;
+        buttons[result.buttonIndex]?.onPress?.(
+          hasPassword ? { text, password } : { text }
+        );
+      }
 
       return result;
     });

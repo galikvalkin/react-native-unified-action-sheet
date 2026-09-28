@@ -40,6 +40,24 @@ internal enum class AnchorAlignment {
   }
 }
 
+/// A bottom sheet's resting height: the content, half the screen, or the full
+/// height below the status bar.
+internal enum class Detent {
+  AUTO,
+  MEDIUM,
+  LARGE,
+  ;
+
+  companion object {
+    fun fromWire(value: String?): Detent? = when (value) {
+      "auto" -> AUTO
+      "medium" -> MEDIUM
+      "large" -> LARGE
+      else -> null
+    }
+  }
+}
+
 internal enum class ForcedAppearance {
   SYSTEM,
   LIGHT,
@@ -70,6 +88,10 @@ internal data class ActionSheetOptions(
   val presentationStyle: PresentationStyle,
   val anchorRect: Rect?,
   val anchorAlignment: AnchorAlignment,
+  /// Bold, as the default action. Only the first preferred button counts.
+  val preferredButtonIndex: Int? = null,
+  /// 'bottom' only, in the caller's order: the sheet opens at the first.
+  val detents: List<Detent> = emptyList(),
 ) {
   companion object {
     /// density converts the anchor rect: measureInWindow reports dp, while
@@ -111,7 +133,20 @@ internal data class ActionSheetOptions(
         presentationStyle = PresentationStyle.fromWire(optString(map, "presentationStyle")),
         anchorRect = optRect(map, "anchorRect", density),
         anchorAlignment = AnchorAlignment.fromWire(optString(map, "anchorAlignment")),
+        preferredButtonIndex = optInt(map, "preferredButtonIndex"),
+        detents = optDetents(map),
       )
+    }
+
+    private fun optDetents(map: ReadableMap): List<Detent> {
+      val detents = mutableListOf<Detent>()
+      map.getArray("detents")?.let { array ->
+        for (index in 0 until array.size()) {
+          Detent.fromWire(array.getString(index))?.let(detents::add)
+        }
+      }
+
+      return detents.distinct()
     }
 
     private fun optRect(map: ReadableMap, key: String, density: Float): Rect? {
