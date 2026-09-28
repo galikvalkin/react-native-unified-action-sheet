@@ -2,21 +2,24 @@
 
 ## How a sheet resolves
 
-`showActionSheetWithOptions()` resolves with the tapped button's index, and that button's `onPress` runs too. The two never disagree:
+`showActionSheetWithOptions()` resolves `{ reason, buttonIndex }`, and the button that closed it runs its `onPress`. The two never disagree:
 
-| | Promise resolves with | `onPress` runs |
-| --- | --- | --- |
-| Tapping a button | its index | that button's |
-| Backdrop tap, back button, swipe down | the `'cancel'` button's index, or `-1` if there is none | the cancel button's, if there is one |
-| `dismissActionSheet()` | `undefined` | nothing |
+| | `reason` | `buttonIndex` | `onPress` runs |
+| --- | --- | --- | --- |
+| Tapping a button | `'selected'` | its index | that button's |
+| Tapping the cancel button | `'cancelled'` | its index | the cancel button's |
+| Backdrop tap, back button, swipe down | `'cancelled'` | the cancel button's index, or `-1` if there is none | the cancel button's, if there is one |
+| `dismissActionSheet()`, `dismissAllActionSheets()`, a JS reload | `'dismissed'` | `undefined` | nothing |
+
+On iOS, UIKit reports a tap outside an action sheet as a tap on its cancel button, so the two can't be told apart; both are `'cancelled'`.
 
 The promise never rejects on its own, only if one of your own `onPress` handlers throws.
 
-A prompt resolves the same way, with `{ buttonIndex, text }`, and its `onPress` receives the text. The text is whatever was in the field when the prompt closed, including on a dismissal, so a draft is recoverable.
+A prompt resolves the same way, adding `text` (and `password` for `'login-password'`), and its `onPress` receives `{ text, password? }`. The text is whatever was in the field when the prompt closed, including when it was dismissed from code, so a draft is recoverable.
 
 ## Dismissing from code
 
-`dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. Both close prompts too. Both are no-ops when nothing is open, and the dismissed sheets resolve with `undefined`.
+`dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. Both close prompts too. Both are no-ops when nothing is open, and the dismissed sheets resolve with `reason: 'dismissed'`.
 
 ## Platform differences
 

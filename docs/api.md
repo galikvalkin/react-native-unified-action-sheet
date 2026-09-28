@@ -11,12 +11,12 @@ import {
 
 | Function | Resolves with |
 | --- | --- |
-| `showActionSheetWithOptions(options)` | the tapped button's index, or `undefined` after a dismiss from code |
-| `showPromptWithOptions(options)` | `{ buttonIndex, text }`, or `undefined` after a dismiss from code |
+| `showActionSheetWithOptions(options)` | `{ reason, buttonIndex }` |
+| `showPromptWithOptions(options)` | `{ reason, buttonIndex, text, password? }` |
 | `dismissActionSheet()` | closes the most recently opened sheet or prompt |
 | `dismissAllActionSheets()` | closes every open sheet and prompt |
 
-What each gesture resolves with, and which `onPress` runs, is in [Behavior](behavior.md).
+`reason` is `'selected'` (a button other than cancel), `'cancelled'` (the cancel button, a backdrop tap, back or a swipe down) or `'dismissed'` (`dismissActionSheet()`, `dismissAllActionSheets()` or a JS reload). `buttonIndex` is the button that closed it: the cancel button's index or `-1` for a cancellation, `undefined` for a dismissal. What each gesture resolves with, and which `onPress` runs, is in [Behavior](behavior.md).
 
 ## Buttons
 
@@ -27,7 +27,9 @@ What each gesture resolves with, and which `onPress` runs, is in [Behavior](beha
 | `label` | `string` | The button's text. |
 | `style` | `'cancel' \| 'destructive'` | `'cancel'` renders a separated row and resolves on a backdrop tap or back. Only the first `'cancel'` counts. `'destructive'` uses the destructive color. |
 | `disabled` | `boolean` | Renders the row dimmed and ignores taps. Independent of `style`. |
-| `onPress` | `() => void` | Runs when this button resolves the sheet. A prompt's receives the field's text. |
+| `preferred` | `boolean` | The default action, shown bold. Only the first preferred button counts. On iOS it applies to centered alerts, prompts (where the return key presses it) and bottom sheets; UIKit ignores it in the standard action sheet, whose cancel button is already bold. |
+| `onPress` | `() => void` | Runs when this button resolves the sheet. A prompt's receives `{ text, password? }`. |
+| `requiresText` | `boolean` | Prompts only: keeps the button disabled while a field is empty. |
 
 ## Sheet options
 
@@ -45,6 +47,7 @@ What each gesture resolves with, and which `onPress` runs, is in [Behavior](beha
 | `destructiveColor` | `string` | ✅ | ✅ | Destructive row color, instead of Android's palette error color or iOS system red. |
 | `buttonTextAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of button labels. Defaults to `'start'`, which follows layout direction. |
 | `anchorAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of an `'anchored'` popup relative to its anchor. `'start'` (default) aligns leading edges, flipping in RTL. |
+| `detents` | `('auto' \| 'medium' \| 'large')[]` | ✅ | ✅ | `'bottom'` only: the heights the sheet can rest at, opening at the first. See [Bottom sheets](bottom-sheet.md#heights). |
 
 ### `presentationStyle`
 
@@ -80,13 +83,17 @@ const anchorRef = useRef<View>(null);
 
 | Option | Type | Description |
 | --- | --- | --- |
-| `placeholder` | `string` | Placeholder text in the field. |
-| `defaultValue` | `string` | Initial text in the field. |
-| `secureTextEntry` | `boolean` | Masks the text, for passwords. |
-| `keyboardType` | `'default' \| 'email-address' \| 'numeric' \| 'phone-pad' \| 'url'` | Keyboard to show. |
+| `type` | `'plain-text' \| 'secure-text' \| 'login-password'` | As in React Native's `Alert.prompt`. `'secure-text'` masks the text; `'login-password'` adds a masked password field below, and resolves `password`. Defaults to `'plain-text'`. |
+| `placeholder` | `string` | Placeholder text in the (first) field. |
+| `passwordPlaceholder` | `string` | Placeholder of the password field of a `'login-password'` prompt. |
+| `defaultValue` | `string` | Initial text in the (first) field. |
+| `keyboardType` | `'default' \| 'email-address' \| 'numeric' \| 'phone-pad' \| 'url'` | Keyboard for the (first) field. |
+| `secureTextEntry` | `boolean` | Same as `type: 'secure-text'`. Kept for compatibility; `type` wins when both are set. |
+
+A `'login-password'` prompt marks its fields as username and password, so iOS AutoFill and Android autofill services can offer saved credentials.
 
 A prompt is always centered. UIKit has no text field in an action sheet, so `presentationStyle` and `anchor` do not apply.
 
 ## Types
 
-Every options and button type is exported for typing your own wrappers: `ActionSheetOptionsInterface`, `PromptOptionsInterface`, `PromptResultInterface`, and the interfaces they are composed from.
+Every options, button and result type is exported for typing your own wrappers: `ActionSheetOptionsInterface`, `ActionSheetResultInterface`, `ActionSheetDetent`, `PromptOptionsInterface`, `PromptResultInterface`, `PromptValuesInterface`, `CloseReason`, and the interfaces they are composed from. The result types are discriminated unions on `reason`, so checking `reason !== 'dismissed'` narrows `buttonIndex` to a number.
