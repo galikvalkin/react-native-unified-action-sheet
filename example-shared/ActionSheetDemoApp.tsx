@@ -131,17 +131,19 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
       },
     },
     {
-      label: 'Bottom sheet, half then full height (detents)',
+      label: 'Bottom sheet, fits then expands (detents)',
       options: {
         title: 'Detents',
         message:
-          "detents: ['medium', 'large'] opens at half height and drags up to full height.",
+          "detents: ['auto', 'large'] opens at its own height, like a short list, and still drags up to full height.",
         options: [
-          ...Array.from({ length: 16 }, (_, i) => option(`Option ${i + 1}`)),
+          option('Share'),
+          option('Duplicate'),
+          option('Move'),
           { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
         ],
         presentationStyle: 'bottom',
-        detents: ['medium', 'large'],
+        detents: ['auto', 'large'],
       },
     },
     {
