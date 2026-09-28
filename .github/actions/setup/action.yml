@@ -1,17 +1,29 @@
 name: Setup
 description: Setup Node.js and install dependencies
 
+inputs:
+  save-cache:
+    description: >-
+      Save the dependency cache after a fresh install. Only one job per run
+      should, or parallel jobs race to save the same key and all but one warn
+      "Cache save failed".
+    required: false
+    default: 'false'
+
 runs:
   using: composite
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version-file: .nvmrc
+        # Our own cache below covers node_modules; setup-node's automatic
+        # package-manager cache would only duplicate it.
+        package-manager-cache: false
 
     - name: Restore dependencies
       id: yarn-cache
-      uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           **/node_modules
@@ -27,8 +39,8 @@ runs:
       shell: bash
 
     - name: Cache dependencies
-      if: steps.yarn-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      if: inputs.save-cache == 'true' && steps.yarn-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           **/node_modules
