@@ -68,6 +68,15 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
   payload[@"destructiveColor"] = options.destructiveColor();
   payload[@"presentationStyle"] = options.presentationStyle();
 
+  if (options.preferredButtonIndex()) {
+    payload[@"preferredButtonIndex"] = @(*options.preferredButtonIndex());
+  }
+  if (options.detents()) {
+    payload[@"detents"] = RCTConvertVecToArray(*options.detents(), ^id(NSString *element) {
+      return element;
+    });
+  }
+
   // The anchor arrives already measured from the ref on the JS side, so this
   // module never resolves a view and needs no React Native view API.
   auto anchorRect = options.anchorRect();
@@ -113,13 +122,21 @@ RCT_EXPORT_METHOD(showPromptWithOptions
       return @(element);
     });
   }
-  if (options.secureTextEntry()) {
-    payload[@"secureTextEntry"] = @(*options.secureTextEntry());
+  if (options.preferredButtonIndex()) {
+    payload[@"preferredButtonIndex"] = @(*options.preferredButtonIndex());
+  }
+  if (options.textRequiredButtonIndices()) {
+    payload[@"textRequiredButtonIndices"] =
+        RCTConvertVecToArray(*options.textRequiredButtonIndices(), ^id(double element) {
+          return @(element);
+        });
   }
 
   payload[@"title"] = options.title();
   payload[@"message"] = options.message();
+  payload[@"type"] = options.type();
   payload[@"placeholder"] = options.placeholder();
+  payload[@"passwordPlaceholder"] = options.passwordPlaceholder();
   payload[@"defaultValue"] = options.defaultValue();
   payload[@"keyboardType"] = options.keyboardType();
   payload[@"tintColor"] = options.tintColor();
@@ -129,8 +146,12 @@ RCT_EXPORT_METHOD(showPromptWithOptions
 
   dispatch_async(dispatch_get_main_queue(), ^{
     [UnifiedActionSheetImpl.shared showPromptWithOptions:payload
-                                             completion:^(NSInteger buttonIndex, NSString *text) {
-                                               resolve(@{@"buttonIndex" : @(buttonIndex), @"text" : text});
+                                             completion:^(NSInteger buttonIndex, NSString *text, NSString *password) {
+                                               resolve(@{
+                                                 @"buttonIndex" : @(buttonIndex),
+                                                 @"text" : text,
+                                                 @"password" : password,
+                                               });
                                              }];
   });
 }

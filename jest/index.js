@@ -7,9 +7,11 @@
  *     require('react-native-unified-action-sheet/jest')
  *   );
  *
- * By default every sheet resolves with no selection. To simulate a tap, queue
- * the index the next sheet should resolve with; the pressed button's onPress
- * runs, exactly as it would in the real module:
+ * By default every sheet resolves as dismissed: { reason: 'dismissed',
+ * buttonIndex: undefined }. To simulate a tap, queue the index the next sheet
+ * should resolve with; it resolves { reason, buttonIndex } with the reason the
+ * real module would give ('cancelled' for the cancel button or -1, otherwise
+ * 'selected'), and the pressed button's onPress runs as it would for real:
  *
  *   setNextButtonIndex(0);
  *   await openTheSheet();
@@ -17,11 +19,26 @@
  * Prefer that over mockResolvedValueOnce, which replaces the implementation and
  * so skips onPress.
  *
- * A prompt is queued the same way, with the text the field should resolve with:
+ * A prompt is queued the same way, with what the field(s) should hold (password
+ * only for a 'login-password' prompt); onPress receives { text, password }:
  *
  *   setNextPromptResult({ buttonIndex: 0, text: 'typed' });
  *   await openThePrompt();
  */
+const buttonsOf = (options) => (options && options.options) || [];
+
+/// The same rule as the real module: the first button styled 'cancel', or -1,
+/// is a cancellation; any other index is a selection.
+const closeResult = (buttons, buttonIndex) => {
+  if (buttonIndex == null)
+    return { reason: 'dismissed', buttonIndex: undefined };
+
+  const cancelIndex = buttons.findIndex((button) => button.style === 'cancel');
+  const cancelled = buttonIndex < 0 || buttonIndex === cancelIndex;
+
+  return { reason: cancelled ? 'cancelled' : 'selected', buttonIndex };
+};
+
 let nextButtonIndex;
 
 const setNextButtonIndex = (index) => {
@@ -29,15 +46,14 @@ const setNextButtonIndex = (index) => {
 };
 
 const showActionSheetWithOptions = jest.fn((options) => {
-  const buttonIndex = nextButtonIndex;
+  const buttons = buttonsOf(options);
+  const result = closeResult(buttons, nextButtonIndex);
   nextButtonIndex = undefined;
 
-  if (buttonIndex != null) {
-    const button = options && options.options && options.options[buttonIndex];
-    if (button && typeof button.onPress === 'function') button.onPress();
-  }
+  const button = result.buttonIndex != null && buttons[result.buttonIndex];
+  if (button && typeof button.onPress === 'function') button.onPress();
 
-  return Promise.resolve(buttonIndex);
+  return Promise.resolve(result);
 });
 
 let nextPromptResult;
@@ -47,16 +63,19 @@ const setNextPromptResult = (result) => {
 };
 
 const showPromptWithOptions = jest.fn((options) => {
-  const result = nextPromptResult;
+  const buttons = buttonsOf(options);
+  const queued = nextPromptResult;
   nextPromptResult = undefined;
 
-  if (result) {
-    const button =
-      options && options.options && options.options[result.buttonIndex];
-    if (button && typeof button.onPress === 'function') {
-      button.onPress(result.text);
-    }
-  }
+  const values = { text: (queued && queued.text) || '' };
+  if (queued && queued.password != null) values.password = queued.password;
+  const result = {
+    ...closeResult(buttons, queued ? queued.buttonIndex : undefined),
+    ...values,
+  };
+
+  const button = result.buttonIndex != null && buttons[result.buttonIndex];
+  if (button && typeof button.onPress === 'function') button.onPress(values);
 
   return Promise.resolve(result);
 });

@@ -147,32 +147,33 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
     promise: Promise,
   ) {
     val resolved = AtomicBoolean(false)
-    val resolveOnce: (Int?, String) -> Unit = { index, text ->
+    val resolveOnce: (Int?, PromptValues) -> Unit = { index, values ->
       if (resolved.compareAndSet(false, true)) {
         promise.resolve(
           Arguments.createMap().apply {
             putInt("buttonIndex", index ?: -1)
-            putString("text", text)
+            putString("text", values.text)
+            putString("password", values.password)
           },
         )
       }
     }
 
-    val (dialog, currentText) = buildPromptDialog(activity, options) { presented, index, text ->
+    val (dialog, currentValues) = buildPromptDialog(activity, options) { presented, index, values ->
       presented.dismiss()
-      resolveOnce(index, text)
+      resolveOnce(index, values)
     }
     openDialogs.add(dialog)
 
     // Read the field at dismissal time: what the user typed survives a backdrop
     // tap, so a caller can still recover a draft.
-    dialog.setOnCancelListener { resolveOnce(options.cancelButtonIndex, currentText()) }
+    dialog.setOnCancelListener { resolveOnce(options.cancelButtonIndex, currentValues()) }
     dialog.setOnDismissListener {
       openDialogs.remove(dialog)
       if (dismissedByApi.remove(dialog)) {
-        resolveOnce(DISMISSED_BY_API, currentText())
+        resolveOnce(DISMISSED_BY_API, currentValues())
       } else {
-        resolveOnce(options.cancelButtonIndex, currentText())
+        resolveOnce(options.cancelButtonIndex, currentValues())
       }
     }
 

@@ -2,15 +2,19 @@ package com.unifiedactionsheet
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
+import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.appcompat.widget.AppCompatEditText
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
@@ -18,6 +22,27 @@ import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.core.widget.NestedScrollView
 
 private const val DISABLED_TEXT_ALPHA = 97
+
+/// A button row. Knows its index and both of its colors, so a prompt can
+/// enable or disable it while the user types (requiresText).
+internal class OptionRow(
+  context: Context,
+  val index: Int,
+  private val enabledColor: Int,
+  private val disabledColor: Int,
+) : AppCompatTextView(context) {
+  fun setRowEnabled(enabled: Boolean) {
+    isEnabled = enabled
+    setTextColor(if (enabled) enabledColor else disabledColor)
+  }
+}
+
+/// Every OptionRow below this view, in layout order.
+internal fun View.optionRows(): List<OptionRow> = when (this) {
+  is OptionRow -> listOf(this)
+  is ViewGroup -> (0 until childCount).flatMap { getChildAt(it).optionRows() }
+  else -> emptyList()
+}
 
 internal fun buildContent(
   context: Context,
@@ -60,10 +85,12 @@ internal fun buildContent(
     optionRows.addView(
       buildOption(
         context = context,
+        index = index,
         label = label,
         color = if (isDestructive) parseColor(options.destructiveColor) ?: palette.error else optionColor,
         centered = centerLabels,
         enabled = index !in options.disabledButtonIndices,
+        bold = index == options.preferredButtonIndex,
         disabledColor = disabledColor,
         onPress = { onSelect(index) },
       ),
@@ -77,10 +104,12 @@ internal fun buildContent(
         optionRows.addView(
           buildOption(
             context = context,
+            index = cancelIdx,
             label = options.options[cancelIdx],
             color = cancelColor,
             centered = centerLabels,
             enabled = cancelIdx !in options.disabledButtonIndices,
+            bold = cancelIdx == options.preferredButtonIndex,
             disabledColor = disabledColor,
             onPress = { onSelect(cancelIdx) },
           ),
@@ -102,13 +131,45 @@ internal fun buildContent(
   return container
 }
 
-internal fun buildPromptInput(
+/// The prompt's field, or for LOGIN_PASSWORD its login and password fields.
+internal fun buildPromptFields(
   context: Context,
   options: PromptOptions,
   palette: SheetPalette,
+): List<EditText> {
+  val first = buildPromptField(
+    context = context,
+    palette = palette,
+    hint = options.placeholder,
+    inputType = options.keyboardType.toInputType(options.type == PromptType.SECURE_TEXT),
+    autofillHint = if (options.type == PromptType.LOGIN_PASSWORD) View.AUTOFILL_HINT_USERNAME else null,
+  ).apply {
+    setText(options.defaultValue.orEmpty())
+    // Land the caret after any default value rather than before it.
+    setSelection(text?.length ?: 0)
+  }
+
+  if (options.type != PromptType.LOGIN_PASSWORD) return listOf(first)
+
+  val password = buildPromptField(
+    context = context,
+    palette = palette,
+    hint = options.passwordPlaceholder,
+    inputType = PromptKeyboardType.DEFAULT.toInputType(secure = true),
+    autofillHint = View.AUTOFILL_HINT_PASSWORD,
+  )
+
+  return listOf(first, password)
+}
+
+private fun buildPromptField(
+  context: Context,
+  palette: SheetPalette,
+  hint: String?,
+  inputType: Int,
+  autofillHint: String?,
 ): EditText = AppCompatEditText(context).apply {
-  setText(options.defaultValue.orEmpty())
-  hint = options.placeholder
+  this.hint = hint
   setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
   setTextColor(palette.primaryText)
   setHintTextColor(ColorUtils.setAlphaComponent(palette.secondaryText, DISABLED_TEXT_ALPHA))
@@ -118,9 +179,11 @@ internal fun buildPromptInput(
   // SingleLineTransformationMethod, which replaces the password masking that
   // setInputType() sets up. Ordering them the other way renders a secure field
   // in plain text while still reporting a password input type.
-  inputType = options.keyboardType.toInputType(options.secureTextEntry)
-  // Land the caret after any default value rather than before it.
-  setSelection(text?.length ?: 0)
+  this.inputType = inputType
+  // Lets the autofill service offer saved credentials, like iOS AutoFill.
+  if (autofillHint != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    setAutofillHints(autofillHint)
+  }
   layoutParams = LinearLayout.LayoutParams(
     LinearLayout.LayoutParams.MATCH_PARENT,
     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -146,22 +209,25 @@ private fun buildHeader(
 
 private fun buildOption(
   context: Context,
+  index: Int,
   label: String,
   color: Int,
   centered: Boolean,
   enabled: Boolean,
+  bold: Boolean,
   disabledColor: Int,
   onPress: () -> Unit,
-): View = TextView(context).apply {
+): View = OptionRow(context, index, color, disabledColor).apply {
   text = label
   gravity = if (centered) Gravity.CENTER_HORIZONTAL else Gravity.START
   setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16))
   setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-  setTextColor(if (enabled) color else disabledColor)
+  // The preferred button: bold, as iOS shows an alert's preferred action.
+  if (bold) setTypeface(typeface, Typeface.BOLD)
   background = AppCompatResources.getDrawable(context, selectableItemBackgroundRes(context))
   isClickable = true
   isFocusable = true
-  isEnabled = enabled
+  setRowEnabled(enabled)
   setOnClickListener { onPress() }
   contentDescription = label
   ViewCompat.setAccessibilityDelegate(

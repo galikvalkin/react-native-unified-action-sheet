@@ -43,6 +43,23 @@ internal enum class PromptKeyboardType {
   }
 }
 
+/// As in React Native's Alert.prompt. LOGIN_PASSWORD adds a secure field below
+/// the first.
+internal enum class PromptType {
+  PLAIN_TEXT,
+  SECURE_TEXT,
+  LOGIN_PASSWORD,
+  ;
+
+  companion object {
+    fun fromWire(value: String?): PromptType = when (value) {
+      "secure-text" -> SECURE_TEXT
+      "login-password" -> LOGIN_PASSWORD
+      else -> PLAIN_TEXT
+    }
+  }
+}
+
 internal data class PromptOptions(
   val options: List<String>,
   val cancelButtonIndex: Int?,
@@ -50,10 +67,14 @@ internal data class PromptOptions(
   val disabledButtonIndices: Set<Int>,
   val title: String?,
   val message: String?,
+  val type: PromptType,
   val placeholder: String?,
+  val passwordPlaceholder: String?,
   val defaultValue: String?,
   val keyboardType: PromptKeyboardType,
-  val secureTextEntry: Boolean,
+  val preferredButtonIndex: Int?,
+  /// Buttons kept disabled while any field is empty.
+  val textRequiredButtonIndices: Set<Int>,
   val tintColor: String?,
   val cancelButtonTintColor: String?,
   val destructiveColor: String?,
@@ -79,6 +100,7 @@ internal data class PromptOptions(
     presentationStyle = PresentationStyle.CENTERED,
     anchorRect = null,
     anchorAlignment = AnchorAlignment.START,
+    preferredButtonIndex = preferredButtonIndex,
   )
 
   companion object {
@@ -97,10 +119,13 @@ internal data class PromptOptions(
         disabledButtonIndices = optIndices(map, "disabledButtonIndices"),
         title = optString(map, "title"),
         message = optString(map, "message"),
+        type = PromptType.fromWire(optString(map, "type")),
         placeholder = optString(map, "placeholder"),
+        passwordPlaceholder = optString(map, "passwordPlaceholder"),
         defaultValue = optString(map, "defaultValue"),
         keyboardType = PromptKeyboardType.fromWire(optString(map, "keyboardType")),
-        secureTextEntry = optBoolean(map, "secureTextEntry"),
+        preferredButtonIndex = optInt(map, "preferredButtonIndex"),
+        textRequiredButtonIndices = optIndices(map, "textRequiredButtonIndices"),
         tintColor = optString(map, "tintColor"),
         cancelButtonTintColor = optString(map, "cancelButtonTintColor"),
         destructiveColor = optString(map, "destructiveColor"),
@@ -122,9 +147,6 @@ internal data class PromptOptions(
 
     private fun optInt(map: ReadableMap, key: String): Int? =
       if (map.hasKey(key) && !map.isNull(key)) map.getInt(key) else null
-
-    private fun optBoolean(map: ReadableMap, key: String): Boolean =
-      map.hasKey(key) && !map.isNull(key) && map.getBoolean(key)
 
     private fun optString(map: ReadableMap, key: String): String? =
       if (map.hasKey(key) && !map.isNull(key)) map.getString(key) else null

@@ -7,12 +7,16 @@ import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.View.MeasureSpec
 import android.view.Window
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatDialog
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
@@ -83,29 +87,76 @@ internal object CenteredDialogPresenter : SheetPresenter {
   }
 }
 
-/// The centered dialog with a text field above the buttons. Deliberately not a
-/// SheetPresenter: it takes PromptOptions and hands the field's text back with
-/// the index, which the sheet interface has no place for.
+/// What the prompt's fields held. password is empty unless LOGIN_PASSWORD.
+internal data class PromptValues(val text: String, val password: String)
+
+/// The centered dialog with text fields above the buttons. Deliberately not a
+/// SheetPresenter: it takes PromptOptions and hands the fields back with the
+/// index, which the sheet interface has no place for.
 internal fun buildPromptDialog(
   activity: Activity,
   options: PromptOptions,
-  onSelect: (Dialog, Int, String) -> Unit,
-): Pair<Dialog, () -> String> {
+  onSelect: (Dialog, Int, PromptValues) -> Unit,
+): Pair<Dialog, () -> PromptValues> {
   val isDark = isDarkAppearance(activity, options.userInterfaceStyle)
   val palette = paletteFor(isDark)
   val dialog = AppCompatDialog(activity, dialogTheme(isDark))
   dialog.supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
 
   val context: Context = dialog.context
-  val input = buildPromptInput(context, options, palette)
-  val currentText = { input.text?.toString().orEmpty() }
+  val fields = buildPromptFields(context, options, palette)
+  val input = fields.singleOrNull() ?: LinearLayout(context).apply {
+    orientation = LinearLayout.VERTICAL
+    fields.forEach(::addView)
+  }
+  val currentValues = {
+    PromptValues(
+      text = fields[0].text?.toString().orEmpty(),
+      password = fields.getOrNull(1)?.text?.toString().orEmpty(),
+    )
+  }
 
   val container = buildContent(
     context = context,
     options = options.toSheetOptions(),
     palette = palette,
     inputView = input,
-  ) { index -> onSelect(dialog, index, currentText()) }
+  ) { index -> onSelect(dialog, index, currentValues()) }
+
+  val rows = container.optionRows()
+
+  // requiresText: those buttons stay disabled while any field is empty.
+  if (options.textRequiredButtonIndices.isNotEmpty()) {
+    val update = {
+      val filled = fields.all { !it.text.isNullOrEmpty() }
+      rows.filter { it.index in options.textRequiredButtonIndices }.forEach { row ->
+        row.setRowEnabled(filled && row.index !in options.disabledButtonIndices)
+      }
+    }
+    val watcher = object : TextWatcher {
+      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+      override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+      override fun afterTextChanged(s: Editable?) = update()
+    }
+    fields.forEach { it.addTextChangedListener(watcher) }
+    // A defaultValue may already satisfy it.
+    update()
+  }
+
+  // The keyboard's action key moves to the next field, then presses the
+  // preferred button, as the return key does in an iOS alert.
+  fields.forEachIndexed { index, field ->
+    field.imeOptions = if (index == fields.lastIndex) EditorInfo.IME_ACTION_DONE else EditorInfo.IME_ACTION_NEXT
+  }
+  val preferredRow = rows.firstOrNull { it.index == options.preferredButtonIndex }
+  if (preferredRow != null) {
+    fields.last().setOnEditorActionListener { _, actionId, _ ->
+      if (actionId != EditorInfo.IME_ACTION_DONE || !preferredRow.isEnabled) return@setOnEditorActionListener false
+
+      preferredRow.performClick()
+      true
+    }
+  }
 
   dialog.setContentView(container)
   dialog.setCanceledOnTouchOutside(true)
@@ -127,9 +178,9 @@ internal fun buildPromptDialog(
   // A prompt exists to be typed into, so raise the keyboard with it rather than
   // making the user tap the field first.
   dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
-  input.requestFocus()
+  fields[0].requestFocus()
 
-  return dialog to currentText
+  return dialog to currentValues
 }
 
 private const val PROMPT_CORNER_RADIUS_DP = 28

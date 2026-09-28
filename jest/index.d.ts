@@ -1,25 +1,28 @@
 import type {
   ActionSheetOptionsInterface,
+  ActionSheetResultInterface,
   PromptOptionsInterface,
   PromptResultInterface,
 } from 'react-native-unified-action-sheet';
 
-/// Queues the index the next sheet resolves with. Pass nothing to go back to
-/// resolving with no selection.
+/// Queues the index the next sheet resolves with; the reason is derived as the
+/// real module would. Pass nothing to go back to resolving as dismissed.
 export declare function setNextButtonIndex(index?: number): void;
 
 export declare const showActionSheetWithOptions: jest.Mock<
-  Promise<number | undefined>,
+  Promise<ActionSheetResultInterface>,
   [ActionSheetOptionsInterface]
 >;
-/// Queues what the next prompt resolves with. Pass nothing to go back to
-/// resolving with no selection.
-export declare function setNextPromptResult(
-  result?: PromptResultInterface
-): void;
+/// Queues what the next prompt resolves with; the reason is derived as the
+/// real module would. Pass nothing to go back to resolving as dismissed.
+export declare function setNextPromptResult(result?: {
+  buttonIndex: number;
+  text: string;
+  password?: string;
+}): void;
 
 export declare const showPromptWithOptions: jest.Mock<
-  Promise<PromptResultInterface | undefined>,
+  Promise<PromptResultInterface>,
   [PromptOptionsInterface]
 >;
 export declare const dismissActionSheet: jest.Mock<void, []>;

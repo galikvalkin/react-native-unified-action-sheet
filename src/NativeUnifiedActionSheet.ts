@@ -20,6 +20,8 @@ export interface Spec extends TurboModule {
     userInterfaceStyle?: string;
     presentationStyle?: string;
     anchorAlignment?: string;
+    preferredButtonIndex?: number;
+    detents?: string[];
     anchorRect?: {
       x: number;
       y: number;
@@ -34,16 +36,19 @@ export interface Spec extends TurboModule {
     disabledButtonIndices?: number[];
     title?: string;
     message?: string;
+    preferredButtonIndex?: number;
+    textRequiredButtonIndices?: number[];
+    type?: string;
     placeholder?: string;
+    passwordPlaceholder?: string;
     defaultValue?: string;
     keyboardType?: string;
-    secureTextEntry?: boolean;
     tintColor?: string;
     cancelButtonTintColor?: string;
     destructiveColor?: string;
     buttonTextAlignment?: string;
     userInterfaceStyle?: string;
-  }): Promise<{ buttonIndex: number; text: string }>;
+  }): Promise<{ buttonIndex: number; text: string; password: string }>;
   dismissActionSheet(): void;
   dismissAllActionSheets(): void;
 }
