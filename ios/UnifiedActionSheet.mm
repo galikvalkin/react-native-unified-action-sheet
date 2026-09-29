@@ -35,7 +35,8 @@ RCT_EXPORT_MODULE()
 /// Only the keys the iOS presentation understands are forwarded; the
 /// Android-only keys in the shared spec are ignored here.
 RCT_EXPORT_METHOD(showActionSheetWithOptions
-                  : (JS::NativeUnifiedActionSheet::SpecShowActionSheetWithOptionsOptions &)options resolve
+                  : (JS::NativeUnifiedActionSheet::SpecShowActionSheetWithOptionsOptions &)options onShow
+                  : (RCTResponseSenderBlock)onShow resolve
                   : (RCTPromiseResolveBlock)resolve reject
                   : (RCTPromiseRejectBlock)reject)
 {
@@ -76,6 +77,11 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
       return element;
     });
   }
+  if (options.testIDs()) {
+    payload[@"testIDs"] = RCTConvertVecToArray(*options.testIDs(), ^id(NSString *element) {
+      return element;
+    });
+  }
 
   // The anchor arrives already measured from the ref on the JS side, so this
   // module never resolves a view and needs no React Native view API.
@@ -91,6 +97,9 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
 
   dispatch_async(dispatch_get_main_queue(), ^{
     [UnifiedActionSheetImpl.shared showWithOptions:payload
+                                           onShow:^{
+                                             onShow(@[]);
+                                           }
                                        completion:^(NSInteger buttonIndex) {
                                          resolve(@(buttonIndex));
                                        }];
@@ -98,7 +107,8 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
 }
 
 RCT_EXPORT_METHOD(showPromptWithOptions
-                  : (JS::NativeUnifiedActionSheet::SpecShowPromptWithOptionsOptions &)options resolve
+                  : (JS::NativeUnifiedActionSheet::SpecShowPromptWithOptionsOptions &)options onShow
+                  : (RCTResponseSenderBlock)onShow resolve
                   : (RCTPromiseResolveBlock)resolve reject
                   : (RCTPromiseRejectBlock)reject)
 {
@@ -131,6 +141,11 @@ RCT_EXPORT_METHOD(showPromptWithOptions
           return @(element);
         });
   }
+  if (options.testIDs()) {
+    payload[@"testIDs"] = RCTConvertVecToArray(*options.testIDs(), ^id(NSString *element) {
+      return element;
+    });
+  }
 
   payload[@"title"] = options.title();
   payload[@"message"] = options.message();
@@ -146,6 +161,9 @@ RCT_EXPORT_METHOD(showPromptWithOptions
 
   dispatch_async(dispatch_get_main_queue(), ^{
     [UnifiedActionSheetImpl.shared showPromptWithOptions:payload
+                                                 onShow:^{
+                                                   onShow(@[]);
+                                                 }
                                              completion:^(NSInteger buttonIndex, NSString *text, NSString *password) {
                                                resolve(@{
                                                  @"buttonIndex" : @(buttonIndex),

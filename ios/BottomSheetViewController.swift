@@ -12,6 +12,8 @@ final class BottomSheetViewController: UIViewController {
     let isEnabled: Bool
     /// Semibold, like the preferred action of an alert.
     let isPreferred: Bool
+    /// The button's accessibilityIdentifier, for end-to-end tests.
+    let testID: String?
   }
 
   private let sheetTitle: String?
@@ -179,6 +181,7 @@ final class BottomSheetViewController: UIViewController {
     let button = UIButton(configuration: config)
     button.contentHorizontalAlignment = .leading
     button.isEnabled = row.isEnabled
+    button.accessibilityIdentifier = row.testID
     // A full-width row highlight, as in a list, rather than a dimmed title.
     button.configurationUpdateHandler = { button in
       var updated = button.configuration

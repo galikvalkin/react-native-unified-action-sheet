@@ -52,9 +52,14 @@ type WireButtons = {
   destructiveButtonIndices?: number[];
   disabledButtonIndices?: number[];
   preferredButtonIndex?: number;
+  /// Aligned with options; '' for a button without one.
+  testIDs?: string[];
 };
 
-type WireOptions = Omit<ActionSheetOptionsInterface, 'options' | 'anchor'> &
+type WireOptions = Omit<
+  ActionSheetOptionsInterface,
+  'options' | 'anchor' | 'onShow'
+> &
   WireButtons & {
     anchorRect?: { x: number; y: number; width: number; height: number };
   };
@@ -69,6 +74,8 @@ const toWireOptions = ({
   // Dropped deliberately: the anchor is a ref, and only its measured rect
   // crosses the bridge. Omit<> would not strip it at runtime.
   anchor: _anchor,
+  // A function: it travels as the native method's callback argument instead.
+  onShow: _onShow,
   ...rest
 }: ActionSheetOptionsInterface): WireOptions => ({
   ...rest,
@@ -77,7 +84,7 @@ const toWireOptions = ({
 
 type WirePromptOptions = Omit<
   PromptOptionsInterface,
-  'options' | 'secureTextEntry'
+  'options' | 'secureTextEntry' | 'onShow'
 > &
   WireButtons & {
     type: NonNullable<PromptOptionsInterface['type']>;
@@ -94,6 +101,7 @@ const toWireButtons = (
   const disabled: number[] = [];
   let cancelButtonIndex: number | undefined;
   let preferredButtonIndex: number | undefined;
+  const testIDs = buttons.map((button) => button.testID ?? '');
 
   buttons.forEach((button, index) => {
     labels.push(button.label);
@@ -116,6 +124,7 @@ const toWireButtons = (
       : { destructiveButtonIndices: destructive }),
     ...(disabled.length === 0 ? {} : { disabledButtonIndices: disabled }),
     ...(preferredButtonIndex == null ? {} : { preferredButtonIndex }),
+    ...(testIDs.some(Boolean) ? { testIDs } : {}),
   };
 };
 
@@ -141,10 +150,11 @@ const DISMISSED: CloseResultInterface = {
 };
 
 const showWithNativeModule = (
-  options: WireOptions
+  options: WireOptions,
+  onShow: () => void
 ): Promise<ActionSheetResultInterface> =>
   nativeModule()
-    .showActionSheetWithOptions(options)
+    .showActionSheetWithOptions(options, onShow)
     // A native failure reads as a cancellation rather than a rejection.
     .catch(() => options.cancelButtonIndex ?? -1)
     .then((buttonIndex) =>
@@ -226,7 +236,13 @@ export const showActionSheetWithOptions = (
   const anchor =
     options.presentationStyle === 'bottom' ? undefined : options.anchor;
 
-  return withAnchorRect(wire, anchor).then(showWithNativeModule).then(press);
+  // Always a function: the native signature takes a callback, which it calls
+  // at most once, when the sheet is on screen.
+  const onShow = () => options.onShow?.();
+
+  return withAnchorRect(wire, anchor)
+    .then((withRect) => showWithNativeModule(withRect, onShow))
+    .then(press);
 };
 
 export const dismissActionSheet = (): void => {
@@ -250,7 +266,14 @@ export const dismissAllActionSheets = (): void => {
 export const showPromptWithOptions = (
   options: PromptOptionsInterface
 ): Promise<PromptResultInterface> => {
-  const { options: buttons, secureTextEntry, type, ...rest } = options;
+  const {
+    options: buttons,
+    secureTextEntry,
+    type,
+    // A function: it travels as the native method's callback argument.
+    onShow,
+    ...rest
+  } = options;
   const textRequired = buttons.flatMap(
     (button: PromptButtonInterface, index) =>
       button.requiresText ? [index] : []
@@ -271,7 +294,7 @@ export const showPromptWithOptions = (
   }
 
   return nativeModule()
-    .showPromptWithOptions(wire)
+    .showPromptWithOptions(wire, () => onShow?.())
     .catch(() => ({
       buttonIndex: wire.cancelButtonIndex ?? -1,
       text: '',

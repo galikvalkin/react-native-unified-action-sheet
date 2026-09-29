@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `onShow` on sheets and prompts: called once the sheet is on screen (iOS:
+  after its presentation animation; Android: when its window is shown), at
+  most once and before the promise resolves. Not called if the sheet never
+  appears, or after a JS reload.
+- `testID` on buttons, for end-to-end tests: the `accessibilityIdentifier` of
+  the action or row on iOS (every style, alerts and prompts included), and the
+  view tag and accessibility resource id of the row on Android. Detox, Maestro,
+  Appium, XCUITest and UiAutomator can find buttons by it.
+
+### Fixed
+
+- Android: sheet and prompt dialog windows had no title for accessibility
+  services to announce when they opened. Each window is now named after the
+  sheet's title (or its message), without drawing anything new.
+
 ## [0.4.0]
 
 ### Changed (breaking)

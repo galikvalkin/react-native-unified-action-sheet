@@ -19,6 +19,9 @@
  * Prefer that over mockResolvedValueOnce, which replaces the implementation and
  * so skips onPress.
  *
+ * Each mocked sheet or prompt calls its onShow before resolving, since it
+ * always "appears".
+ *
  * A prompt is queued the same way, with what the field(s) should hold (password
  * only for a 'login-password' prompt); onPress receives { text, password }:
  *
@@ -26,6 +29,11 @@
  *   await openThePrompt();
  */
 const buttonsOf = (options) => (options && options.options) || [];
+
+/// A mocked sheet always appears, so onShow runs first, as it would for real.
+const callOnShow = (options) => {
+  if (options && typeof options.onShow === 'function') options.onShow();
+};
 
 /// The same rule as the real module: the first button styled 'cancel', or -1,
 /// is a cancellation; any other index is a selection.
@@ -46,6 +54,7 @@ const setNextButtonIndex = (index) => {
 };
 
 const showActionSheetWithOptions = jest.fn((options) => {
+  callOnShow(options);
   const buttons = buttonsOf(options);
   const result = closeResult(buttons, nextButtonIndex);
   nextButtonIndex = undefined;
@@ -63,6 +72,7 @@ const setNextPromptResult = (result) => {
 };
 
 const showPromptWithOptions = jest.fn((options) => {
+  callOnShow(options);
   const buttons = buttonsOf(options);
   const queued = nextPromptResult;
   nextPromptResult = undefined;

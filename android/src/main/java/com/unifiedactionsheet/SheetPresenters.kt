@@ -49,6 +49,7 @@ internal object CenteredDialogPresenter : SheetPresenter {
 
     dialog.setContentView(container)
     dialog.setCanceledOnTouchOutside(true)
+    options.windowTitle?.let(dialog::setTitle)
 
     val background = GradientDrawable().apply {
       cornerRadius = dp(context, CENTERED_CORNER_RADIUS_DP).toFloat()
@@ -160,6 +161,7 @@ internal fun buildPromptDialog(
 
   dialog.setContentView(container)
   dialog.setCanceledOnTouchOutside(true)
+  options.toSheetOptions().windowTitle?.let(dialog::setTitle)
 
   val background = GradientDrawable().apply {
     cornerRadius = dp(context, PROMPT_CORNER_RADIUS_DP).toFloat()
@@ -226,6 +228,7 @@ internal class AnchoredDialogPresenter(private val anchorRect: Rect) : SheetPres
     }
     dialog.setContentView(wrapper)
     dialog.setCanceledOnTouchOutside(true)
+    options.windowTitle?.let(dialog::setTitle)
 
     val window = dialog.window ?: return dialog
     window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))

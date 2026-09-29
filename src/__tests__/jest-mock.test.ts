@@ -4,6 +4,7 @@ type Mock = {
   setNextButtonIndex: (index?: number) => void;
   showActionSheetWithOptions: (options: {
     options: { label: string; style?: string; onPress?: () => void }[];
+    onShow?: () => void;
   }) => Promise<{ reason: string; buttonIndex: number | undefined }>;
   setNextPromptResult: (result?: {
     buttonIndex: number;
@@ -16,6 +17,7 @@ type Mock = {
       style?: string;
       onPress?: (values: { text: string; password?: string }) => void;
     }[];
+    onShow?: () => void;
   }) => Promise<{
     reason: string;
     buttonIndex: number | undefined;
@@ -98,6 +100,32 @@ describe('the shipped jest mock', () => {
       password: 'pw',
     });
     expect(onPress).toHaveBeenCalledWith({ text: 'ann', password: 'pw' });
+  });
+
+  it('calls onShow before resolving, for sheets and prompts', async () => {
+    const order: string[] = [];
+    mock.setNextButtonIndex(0);
+
+    await mock
+      .showActionSheetWithOptions({
+        options: [{ label: 'A', onPress: () => order.push('sheet onPress') }],
+        onShow: () => order.push('sheet onShow'),
+      })
+      .then(() => order.push('sheet resolved'));
+    await mock
+      .showPromptWithOptions({
+        options: [{ label: 'OK' }],
+        onShow: () => order.push('prompt onShow'),
+      })
+      .then(() => order.push('prompt resolved'));
+
+    expect(order).toEqual([
+      'sheet onShow',
+      'sheet onPress',
+      'sheet resolved',
+      'prompt onShow',
+      'prompt resolved',
+    ]);
   });
 
   it('resolves a prompt as dismissed by default', async () => {
