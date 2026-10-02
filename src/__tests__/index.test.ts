@@ -406,15 +406,36 @@ describe('showPromptWithOptions', () => {
       ],
     });
 
-    expect(mockedNative().showPromptWithOptions).toHaveBeenCalledWith({
-      title: 'Rename',
-      placeholder: 'New name',
-      options: ['Save', 'Delete', 'Nope', 'Cancel'],
-      cancelButtonIndex: 3,
-      destructiveButtonIndices: [1],
-      disabledButtonIndices: [2],
-      type: 'plain-text',
-    });
+    // Exact on purpose: nothing else, a caller's onShow included, may reach
+    // the wire options. onShow travels as the second argument.
+    expect(mockedNative().showPromptWithOptions).toHaveBeenCalledWith(
+      {
+        title: 'Rename',
+        placeholder: 'New name',
+        options: ['Save', 'Delete', 'Nope', 'Cancel'],
+        cancelButtonIndex: 3,
+        destructiveButtonIndices: [1],
+        disabledButtonIndices: [2],
+        type: 'plain-text',
+      },
+      expect.any(Function)
+    );
+  });
+
+  it('keeps onShow off the wire options, even when set', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+    const onShow = jest.fn();
+
+    await showActionSheetWithOptions({ options: buttons('A'), onShow });
+    await showPromptWithOptions({ options: buttons('OK'), onShow });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).not.toHaveProperty('onShow');
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).not.toHaveProperty('onShow');
   });
 
   it('resolves the index, reason and text, and passes the text to onPress', async () => {
@@ -693,5 +714,81 @@ describe('prompt types', () => {
     const calls = mockedNative().showPromptWithOptions.mock.calls;
     expect(calls[0]![0]).toMatchObject({ textRequiredButtonIndices: [0] });
     expect(calls[1]![0]).not.toHaveProperty('textRequiredButtonIndices');
+  });
+});
+
+describe('testID', () => {
+  it('sends testIDs aligned with the buttons, empty where unset', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+    const options = [
+      { label: 'Share', testID: 'sheet-share' },
+      { label: 'Copy' },
+      { label: 'Cancel', style: 'cancel' as const, testID: 'sheet-cancel' },
+    ];
+
+    await showActionSheetWithOptions({ options });
+    await showPromptWithOptions({ options });
+
+    const expected = { testIDs: ['sheet-share', '', 'sheet-cancel'] };
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject(expected);
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject(expected);
+  });
+
+  it('omits testIDs when no button sets one', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+
+    await showActionSheetWithOptions({ options: buttons('A', 'B') });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).not.toHaveProperty('testIDs');
+  });
+});
+
+describe('onShow', () => {
+  it("always passes native a function that calls the caller's onShow", async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('android');
+    const onShow = jest.fn();
+
+    await showActionSheetWithOptions({ options: buttons('A'), onShow });
+    await showPromptWithOptions({ options: buttons('OK'), onShow });
+
+    const sheetOnShow = mockedNative().showActionSheetWithOptions.mock
+      .calls[0]![1] as () => void;
+    const promptOnShow = mockedNative().showPromptWithOptions.mock
+      .calls[0]![1] as () => void;
+    expect(onShow).not.toHaveBeenCalled();
+    sheetOnShow();
+    promptOnShow();
+    expect(onShow).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes a harmless function when the caller has no onShow', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+
+    await showActionSheetWithOptions({ options: buttons('A') });
+
+    const nativeOnShow = mockedNative().showActionSheetWithOptions.mock
+      .calls[0]![1] as () => void;
+    expect(typeof nativeOnShow).toBe('function');
+    expect(() => nativeOnShow()).not.toThrow();
+  });
+
+  it('is never called on an unsupported platform', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } = loadIndex(
+      'web' as 'ios'
+    );
+    const onShow = jest.fn();
+
+    await showActionSheetWithOptions({ options: buttons('A'), onShow });
+    await showPromptWithOptions({ options: buttons('OK'), onShow });
+
+    expect(onShow).not.toHaveBeenCalled();
   });
 });

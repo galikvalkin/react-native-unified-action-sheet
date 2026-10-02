@@ -13,6 +13,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
   @objc public func show(
     options: NSDictionary,
+    onShow: @escaping () -> Void,
     completion: @escaping (Int) -> Void
   ) {
     let labels = options["options"] as? [String] ?? []
@@ -27,8 +28,10 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
     let destructiveColor = Self.color(options["destructiveColor"])
     let preferredIndex = (options["preferredButtonIndex"] as? NSNumber)?.intValue
+    let testIDs = options["testIDs"] as? [String] ?? []
 
     guard let parent = Self.presentedViewController() else {
+      // Never shown, so onShow is never called.
       completion(cancelButtonIndex)
 
       return
@@ -48,9 +51,11 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         destructiveIndices: destructiveIndices,
         disabledIndices: disabledIndices,
         preferredIndex: preferredIndex,
+        testIDs: testIDs,
         tintColor: tintColor,
         cancelButtonTintColor: cancelButtonTintColor,
         destructiveColor: destructiveColor,
+        onShow: onShow,
         completion: completion
       )
 
@@ -71,6 +76,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: cancelButtonIndex,
+      onShow: onShow,
       completion: { index, _, _ in completion(index) }
     )
 
@@ -85,6 +91,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
         self?.finish(presentation, index: index)
       }
+      action.accessibilityIdentifier = Self.testID(testIDs, index)
 
       // Precedence matches Android: destructive > cancel tint > tint > default.
       // disabledButtonTintColor is deliberately absent: UIKit owns the
@@ -143,7 +150,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     alert.popoverPresentationController?.delegate = self
 
     presentations.append(presentation)
-    parent.present(alert, animated: true)
+    parent.present(alert, animated: true) { [weak presentation] in presentation?.shown() }
   }
 
   /// React Native's Alert.prompt is iOS-only; this is the shared half of the
@@ -151,6 +158,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
   /// sheet, and a prompt is inherently a centered, modal question.
   @objc public func showPrompt(
     options: NSDictionary,
+    onShow: @escaping () -> Void,
     completion: @escaping (Int, String, String) -> Void
   ) {
     let labels = options["options"] as? [String] ?? []
@@ -169,8 +177,10 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       (options["textRequiredButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
     )
     let type = options["type"] as? String ?? "plain-text"
+    let testIDs = options["testIDs"] as? [String] ?? []
 
     guard let parent = Self.presentedViewController() else {
+      // Never shown, so onShow is never called.
       completion(cancelButtonIndex, "", "")
 
       return
@@ -214,6 +224,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
           fields.count > 1 ? (fields[1].text ?? "") : ""
         )
       },
+      onShow: onShow,
       completion: completion
     )
 
@@ -228,6 +239,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
         self?.finish(presentation, index: index)
       }
+      action.accessibilityIdentifier = Self.testID(testIDs, index)
 
       let color: UIColor? =
         style == .destructive
@@ -274,7 +286,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
 
     presentations.append(presentation)
-    parent.present(alert, animated: true)
+    parent.present(alert, animated: true) { [weak presentation] in presentation?.shown() }
   }
 
   private func presentBottomSheet(
@@ -285,9 +297,11 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     destructiveIndices: Set<Int>,
     disabledIndices: Set<Int>,
     preferredIndex: Int?,
+    testIDs: [String],
     tintColor: UIColor?,
     cancelButtonTintColor: UIColor?,
     destructiveColor: UIColor?,
+    onShow: @escaping () -> Void,
     completion: @escaping (Int) -> Void
   ) {
     let rows = labels.enumerated().map { index, label in
@@ -296,7 +310,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         label: label,
         isDestructive: destructiveIndices.contains(index),
         isEnabled: !disabledIndices.contains(index),
-        isPreferred: index == preferredIndex
+        isPreferred: index == preferredIndex,
+        testID: Self.testID(testIDs, index)
       )
     }
 
@@ -313,6 +328,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: sheet,
       cancelButtonIndex: cancelButtonIndex,
+      onShow: onShow,
       completion: { index, _, _ in completion(index) }
     )
 
@@ -369,7 +385,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
 
     presentations.append(presentation)
-    parent.present(sheet, animated: true)
+    parent.present(sheet, animated: true) { [weak presentation] in presentation?.shown() }
   }
 
   /// Interactive dismissal of a sheet: a swipe down or a tap on the dimmed
@@ -449,6 +465,13 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     presentation.resolve(index)
   }
 
+  /// A button's testID, or nil for none (the wire sends '' for a gap).
+  private static func testID(_ testIDs: [String], _ index: Int) -> String? {
+    guard testIDs.indices.contains(index), !testIDs[index].isEmpty else { return nil }
+
+    return testIDs[index]
+  }
+
   /// 'auto' fits the content (iOS 16+; half height on iOS 15), 'medium' is
   /// half height, 'large' is full height.
   private static func detent(
@@ -478,25 +501,39 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     /// whatever is in the fields when the prompt closes. Sheets pass constants.
     private let currentValues: () -> (String, String)
     private var completion: ((Int, String, String) -> Void)?
+    /// Called once, when the presentation animation completes. Cleared on
+    /// resolve and discard, so it never fires late or into a reloaded runtime.
+    private var onShow: (() -> Void)?
 
     init(
       controller: UIViewController,
       cancelButtonIndex: Int,
       currentValues: @escaping () -> (String, String) = { ("", "") },
+      onShow: @escaping () -> Void,
       completion: @escaping (Int, String, String) -> Void
     ) {
       self.controller = controller
       self.cancelButtonIndex = cancelButtonIndex
       self.currentValues = currentValues
+      self.onShow = onShow
       self.completion = completion
     }
 
-    /// Drops the completion without calling it.
+    /// The sheet is on screen.
+    func shown() {
+      let onShow = self.onShow
+      self.onShow = nil
+      onShow?()
+    }
+
+    /// Drops the completion (and a pending onShow) without calling either.
     func discard() {
       completion = nil
+      onShow = nil
     }
 
     func resolve(_ index: Int) {
+      onShow = nil
       guard let completion else { return }
 
       self.completion = nil

@@ -75,6 +75,7 @@ internal data class PromptOptions(
   val preferredButtonIndex: Int?,
   /// Buttons kept disabled while any field is empty.
   val textRequiredButtonIndices: Set<Int>,
+  val testIDs: List<String?>,
   val tintColor: String?,
   val cancelButtonTintColor: String?,
   val destructiveColor: String?,
@@ -101,6 +102,7 @@ internal data class PromptOptions(
     anchorRect = null,
     anchorAlignment = AnchorAlignment.START,
     preferredButtonIndex = preferredButtonIndex,
+    testIDs = testIDs,
   )
 
   companion object {
@@ -126,6 +128,7 @@ internal data class PromptOptions(
         keyboardType = PromptKeyboardType.fromWire(optString(map, "keyboardType")),
         preferredButtonIndex = optInt(map, "preferredButtonIndex"),
         textRequiredButtonIndices = optIndices(map, "textRequiredButtonIndices"),
+        testIDs = ActionSheetOptions.optTestIDs(map),
         tintColor = optString(map, "tintColor"),
         cancelButtonTintColor = optString(map, "cancelButtonTintColor"),
         destructiveColor = optString(map, "destructiveColor"),

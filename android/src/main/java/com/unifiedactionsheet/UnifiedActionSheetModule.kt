@@ -3,6 +3,7 @@ package com.unifiedactionsheet
 import android.app.Activity
 import android.app.Dialog
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Callback
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -21,7 +22,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
 
   private val dismissedByApi = mutableSetOf<Dialog>()
 
-  override fun showActionSheetWithOptions(options: ReadableMap, promise: Promise) {
+  override fun showActionSheetWithOptions(options: ReadableMap, onShow: Callback, promise: Promise) {
     val parsed =
       ActionSheetOptions.fromReadableMap(
         options,
@@ -34,11 +35,11 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       )
 
     UiThreadUtil.runOnUiThread {
-      presentSheet(activity, parsed, promise)
+      presentSheet(activity, parsed, onShow, promise)
     }
   }
 
-  override fun showPromptWithOptions(options: ReadableMap, promise: Promise) {
+  override fun showPromptWithOptions(options: ReadableMap, onShow: Callback, promise: Promise) {
     val parsed = PromptOptions.fromReadableMap(options)
     val activity = reactApplicationContext.currentActivity
       ?: return promise.reject(
@@ -47,7 +48,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       )
 
     UiThreadUtil.runOnUiThread {
-      presentPrompt(activity, parsed, promise)
+      presentPrompt(activity, parsed, onShow, promise)
     }
   }
 
@@ -95,6 +96,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
   private fun presentSheet(
     activity: Activity,
     options: ActionSheetOptions,
+    onShow: Callback,
     promise: Promise,
   ) {
     val resolved = AtomicBoolean(false)
@@ -134,6 +136,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
         resolveOnce(options.cancelButtonIndex)
       }
     }
+    dialog.callOnceWhenShown(onShow)
 
     dialog.show()
   }
@@ -144,6 +147,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
   private fun presentPrompt(
     activity: Activity,
     options: PromptOptions,
+    onShow: Callback,
     promise: Promise,
   ) {
     val resolved = AtomicBoolean(false)
@@ -176,8 +180,19 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
         resolveOnce(options.cancelButtonIndex, currentValues())
       }
     }
+    dialog.callOnceWhenShown(onShow)
 
     dialog.show()
+  }
+
+  /// onShow: once the dialog's window is shown. A React Native Callback throws
+  /// if invoked twice, hence the guard. A dialog that is never shown (the
+  /// no-activity path rejects before building one) never calls it.
+  private fun Dialog.callOnceWhenShown(onShow: Callback) {
+    val shown = AtomicBoolean(false)
+    setOnShowListener {
+      if (shown.compareAndSet(false, true)) onShow.invoke()
+    }
   }
 
   companion object {

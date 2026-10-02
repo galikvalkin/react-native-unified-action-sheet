@@ -28,9 +28,16 @@ private const val DISABLED_TEXT_ALPHA = 97
 internal class OptionRow(
   context: Context,
   val index: Int,
+  /// For end-to-end tests: the view tag (Detox) and the accessibility
+  /// resource id (UiAutomator, Maestro, Appium).
+  val testID: String?,
   private val enabledColor: Int,
   private val disabledColor: Int,
 ) : AppCompatTextView(context) {
+  init {
+    if (testID != null) tag = testID
+  }
+
   fun setRowEnabled(enabled: Boolean) {
     isEnabled = enabled
     setTextColor(if (enabled) enabledColor else disabledColor)
@@ -86,6 +93,7 @@ internal fun buildContent(
       buildOption(
         context = context,
         index = index,
+        testID = options.testIDs.getOrNull(index),
         label = label,
         color = if (isDestructive) parseColor(options.destructiveColor) ?: palette.error else optionColor,
         centered = centerLabels,
@@ -105,6 +113,7 @@ internal fun buildContent(
           buildOption(
             context = context,
             index = cancelIdx,
+            testID = options.testIDs.getOrNull(cancelIdx),
             label = options.options[cancelIdx],
             color = cancelColor,
             centered = centerLabels,
@@ -210,6 +219,7 @@ private fun buildHeader(
 private fun buildOption(
   context: Context,
   index: Int,
+  testID: String?,
   label: String,
   color: Int,
   centered: Boolean,
@@ -217,7 +227,7 @@ private fun buildOption(
   bold: Boolean,
   disabledColor: Int,
   onPress: () -> Unit,
-): View = OptionRow(context, index, color, disabledColor).apply {
+): View = OptionRow(context, index, testID, color, disabledColor).apply {
   text = label
   gravity = if (centered) Gravity.CENTER_HORIZONTAL else Gravity.START
   setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16))
@@ -239,6 +249,7 @@ private fun buildOption(
       ) {
         super.onInitializeAccessibilityNodeInfo(host, info)
         info.className = Button::class.java.name
+        testID?.let { info.viewIdResourceName = it }
       }
     },
   )

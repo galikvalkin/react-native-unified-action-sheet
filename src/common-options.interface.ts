@@ -7,6 +7,10 @@ export interface BaseButtonInterface {
   /// filled button from iOS 26, bold text before). Only the first preferred
   /// button counts. UIKit ignores it in the standard iOS action sheet.
   preferred?: boolean;
+  /// Identifies this button in end-to-end tests (Detox, Maestro, Appium,
+  /// XCUITest, UiAutomator). Not shown or spoken. iOS: the action's or row's
+  /// accessibilityIdentifier; Android: the row's tag and resource id.
+  testID?: string;
 }
 
 export interface BaseOptionsInterface {
@@ -16,6 +20,11 @@ export interface BaseOptionsInterface {
   cancelButtonTintColor?: string;
   destructiveColor?: string;
   userInterfaceStyle?: 'light' | 'dark';
+  /// Called once the sheet or prompt is on screen: on iOS after its
+  /// presentation animation, on Android when its window is shown. Called at
+  /// most once, before the promise resolves, and not at all if it never
+  /// appears (nothing to present from, or an unsupported platform).
+  onShow?: () => void;
 }
 
 export interface BaseAndroidOptionsInterface {

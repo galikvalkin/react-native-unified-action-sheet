@@ -19,4 +19,24 @@ await openTheSheet();
 
 `setNextPromptResult({ buttonIndex, text, password? })` does the same for a prompt; the button's `onPress` receives `{ text, password? }`.
 
-Prefer these over `mockResolvedValueOnce`, which replaces the implementation and so skips `onPress`. `dismissActionSheet` and `dismissAllActionSheets` are spies.
+Prefer these over `mockResolvedValueOnce`, which replaces the implementation and so skips `onPress`. `dismissActionSheet` and `dismissAllActionSheets` are spies. Every mocked sheet or prompt calls its `onShow` before resolving, since it always "appears".
+
+## End-to-end tests
+
+Give buttons a `testID` to find them in Detox, Maestro, Appium, XCUITest or UiAutomator tests:
+
+```ts
+showActionSheetWithOptions({
+  options: [
+    { label: 'Delete', style: 'destructive', testID: 'item-delete' },
+    { label: 'Cancel', style: 'cancel', testID: 'item-cancel' },
+  ],
+});
+```
+
+| Platform | Where the `testID` goes | Matched by |
+| --- | --- | --- |
+| iOS | the action's or row's `accessibilityIdentifier`, in every style including alerts and prompts | XCUITest, Detox, Maestro, Appium |
+| Android | the row's view tag, and its accessibility resource id | Detox (tag); UiAutomator, Maestro, Appium (resource id) |
+
+For example, in Maestro: `- tapOn: { id: "item-delete" }`.

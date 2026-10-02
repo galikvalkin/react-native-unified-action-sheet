@@ -30,6 +30,7 @@ import {
 | `preferred` | `boolean` | The default action, emphasized. Only the first preferred button counts. On Android and in the iOS bottom sheet the row is bold. In iOS centered alerts and prompts it gets UIKit's own preferred-action style, a filled button from iOS 26 and bold text before, and in a prompt the return key presses it. UIKit ignores it in the standard action sheet. |
 | `onPress` | `() => void` | Runs when this button resolves the sheet. A prompt's receives `{ text, password? }`. |
 | `requiresText` | `boolean` | Prompts only: keeps the button disabled while a field is empty. |
+| `testID` | `string` | Finds the button in end-to-end tests; not shown or spoken. Every style on both platforms. See [Testing](testing.md#end-to-end-tests). |
 
 ## Sheet options
 
@@ -48,6 +49,7 @@ import {
 | `buttonTextAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of button labels. Defaults to `'start'`, which follows layout direction. |
 | `anchorAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of an `'anchored'` popup relative to its anchor. `'start'` (default) aligns leading edges, flipping in RTL. |
 | `detents` | `('auto' \| 'medium' \| 'large')[]` | ✅ | ✅ | `'bottom'` only: the heights the sheet can rest at, opening at the first. See [Bottom sheets](bottom-sheet.md#heights). |
+| `onShow` | `() => void` | ✅ | ✅ | Called once the sheet is on screen, at most once and before the promise resolves. See [Behavior](behavior.md#when-onshow-fires). |
 
 ### `presentationStyle`
 
@@ -79,7 +81,7 @@ const anchorRef = useRef<View>(null);
 
 ## Prompt options
 
-`showPromptWithOptions()` takes the sheet's `title`, `message`, colors, `userInterfaceStyle` and `buttonTextAlignment`, plus:
+`showPromptWithOptions()` takes the sheet's `title`, `message`, colors, `userInterfaceStyle`, `buttonTextAlignment` and `onShow`, plus:
 
 | Option | Type | Description |
 | --- | --- | --- |

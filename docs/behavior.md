@@ -17,6 +17,14 @@ The promise never rejects on its own, only if one of your own `onPress` handlers
 
 A prompt resolves the same way, adding `text` (and `password` for `'login-password'`), and its `onPress` receives `{ text, password? }`. The text is whatever was in the field when the prompt closed, including when it was dismissed from code, so a draft is recoverable.
 
+## When `onShow` fires
+
+`onShow` runs once the sheet or prompt is on screen: on iOS when its presentation animation finishes, on Android when its window is shown (its enter animation may still be running). It runs at most once per call, and always before the promise resolves.
+
+It doesn't run when the sheet never appears: when there is no window or view controller to present from (iOS), no current activity (Android), or on a platform without the native module. The promise still resolves as usual. It also never runs after a JS reload for a sheet from the old runtime.
+
+A sheet dismissed from code during its present animation did appear, so `onShow` runs, and the promise then resolves as `'dismissed'`.
+
 ## Dismissing from code
 
 `dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. Both close prompts too. Both are no-ops when nothing is open, and the dismissed sheets resolve with `reason: 'dismissed'`.

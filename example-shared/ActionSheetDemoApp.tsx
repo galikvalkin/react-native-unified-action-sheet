@@ -28,6 +28,13 @@ interface DemoCase {
 /// Every button carries an onPress, so the demo never matches on an index. The
 /// cancel buttons have one too: a backdrop tap resolves the cancel button, so
 /// its handler runs even though the row itself was not tapped.
+/// 'Erase forever' → 'demo-erase-forever'.
+const toTestID = (label: string) =>
+  `demo-${label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')}`;
+
 const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
   const press = (label: string) => () => report(`onPress: ${label}`);
   const option = (label: string) => ({ label, onPress: press(label) });
@@ -283,7 +290,16 @@ export default function ActionSheetDemoApp() {
   /// outcomes that press no button: a programmatic dismiss, and a cancel
   /// gesture (-1) on a sheet with no cancel button.
   const show = async (demo: DemoCase) => {
-    const result = await showActionSheetWithOptions(demo.options);
+    const result = await showActionSheetWithOptions({
+      ...demo.options,
+      // Every row gets a testID for end-to-end tests, e.g. 'demo-share'.
+      options: demo.options.options.map((button) => ({
+        ...button,
+        testID: button.testID ?? toTestID(button.label),
+      })),
+      // Overwritten by the button's own onPress once one is tapped.
+      onShow: () => setLastResult(`${demo.label} → shown`),
+    });
 
     if (result.reason === 'dismissed' || result.buttonIndex < 0) {
       setLastResult(`${demo.label} → ${result.reason}, no button`);
@@ -376,6 +392,7 @@ export default function ActionSheetDemoApp() {
     // The gap this fills: React Native's own Alert.prompt is iOS-only and does
     // nothing at all on Android.
     const result = await showPromptWithOptions({
+      onShow: () => setLastResult('Prompt → shown'),
       title: 'Rename item',
       message: 'Type a new name.',
       placeholder: 'New name',

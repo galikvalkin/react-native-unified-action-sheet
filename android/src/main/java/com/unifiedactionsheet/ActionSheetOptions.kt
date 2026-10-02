@@ -92,7 +92,14 @@ internal data class ActionSheetOptions(
   val preferredButtonIndex: Int? = null,
   /// 'bottom' only, in the caller's order: the sheet opens at the first.
   val detents: List<Detent> = emptyList(),
+  /// Aligned with options; null where a button has none.
+  val testIDs: List<String?> = emptyList(),
 ) {
+  /// For TalkBack: names the dialog window when it opens. The dialogs draw
+  /// their own header, so this sets no visible title bar.
+  val windowTitle: String?
+    get() = title?.takeIf { it.isNotBlank() } ?: message?.takeIf { it.isNotBlank() }
+
   companion object {
     /// density converts the anchor rect: measureInWindow reports dp, while
     /// View coordinates are px.
@@ -135,7 +142,20 @@ internal data class ActionSheetOptions(
         anchorAlignment = AnchorAlignment.fromWire(optString(map, "anchorAlignment")),
         preferredButtonIndex = optInt(map, "preferredButtonIndex"),
         detents = optDetents(map),
+        testIDs = optTestIDs(map),
       )
+    }
+
+    /// The wire sends '' for a button without a testID.
+    fun optTestIDs(map: ReadableMap): List<String?> {
+      val testIDs = mutableListOf<String?>()
+      map.getArray("testIDs")?.let { array ->
+        for (index in 0 until array.size()) {
+          testIDs.add(array.getString(index)?.takeIf { it.isNotEmpty() })
+        }
+      }
+
+      return testIDs
     }
 
     private fun optDetents(map: ReadableMap): List<Detent> {
