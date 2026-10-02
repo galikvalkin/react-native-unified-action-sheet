@@ -40,3 +40,28 @@ showActionSheetWithOptions({
 | Android | the row's view tag, and its accessibility resource id | Detox (tag); UiAutomator, Maestro, Appium (resource id) |
 
 For example, in Maestro: `- tapOn: { id: "item-delete" }`.
+
+The sheet itself and a prompt's text fields take ids too, so a test can wait for a sheet to appear and type into a prompt:
+
+```ts
+showPromptWithOptions({
+  title: 'Sign in',
+  type: 'login-password',
+  testID: 'sign-in-prompt',
+  fieldTestID: 'sign-in-email',
+  passwordFieldTestID: 'sign-in-password',
+  options: [{ label: 'Sign in', testID: 'sign-in-submit' }],
+});
+```
+
+```yaml
+# Maestro
+- assertVisible: { id: "sign-in-prompt" }
+- tapOn: { id: "sign-in-email" }
+- inputText: "ann@example.com"
+- tapOn: { id: "sign-in-password" }
+- inputText: "hunter22"
+- tapOn: { id: "sign-in-submit" }
+```
+
+A sheet's `testID` goes on its alert or sheet view on iOS (`accessibilityIdentifier`), and on its dialog's content view on Android (tag and resource id). Field ids go on the text fields the same way.

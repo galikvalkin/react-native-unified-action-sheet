@@ -29,6 +29,9 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let destructiveColor = Self.color(options["destructiveColor"])
     let preferredIndex = (options["preferredButtonIndex"] as? NSNumber)?.intValue
     let testIDs = options["testIDs"] as? [String] ?? []
+    let accessibilityLabels = options["accessibilityLabels"] as? [String] ?? []
+    let accessibilityHints = options["accessibilityHints"] as? [String] ?? []
+    let sheetTestID = Self.text(options["testID"])
 
     guard let parent = Self.presentedViewController() else {
       // Never shown, so onShow is never called.
@@ -52,6 +55,9 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         disabledIndices: disabledIndices,
         preferredIndex: preferredIndex,
         testIDs: testIDs,
+        accessibilityLabels: accessibilityLabels,
+        accessibilityHints: accessibilityHints,
+        sheetTestID: sheetTestID,
         tintColor: tintColor,
         cancelButtonTintColor: cancelButtonTintColor,
         destructiveColor: destructiveColor,
@@ -91,7 +97,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
         self?.finish(presentation, index: index)
       }
-      action.accessibilityIdentifier = Self.testID(testIDs, index)
+      action.accessibilityIdentifier = Self.entry(testIDs, index)
 
       // Precedence matches Android: destructive > cancel tint > tint > default.
       // disabledButtonTintColor is deliberately absent: UIKit owns the
@@ -117,6 +123,9 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
 
     alert.view.tintColor = tintColor
+    // UIAlertAction has no public accessibilityLabel or hint, so per-button
+    // labels and hints apply to the bottom sheet only; the sheet's own id does.
+    alert.view.accessibilityIdentifier = sheetTestID
 
     switch options["userInterfaceStyle"] as? String {
     case "dark": alert.overrideUserInterfaceStyle = .dark
@@ -197,6 +206,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       field.text = Self.text(options["defaultValue"])
       field.isSecureTextEntry = type == "secure-text"
       field.keyboardType = Self.keyboardType(options["keyboardType"])
+      field.accessibilityIdentifier = Self.text(options["fieldTestID"])
       if type == "login-password" {
         field.textContentType = .username
       }
@@ -209,6 +219,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         field.placeholder = Self.text(options["passwordPlaceholder"])
         field.isSecureTextEntry = true
         field.textContentType = .password
+        field.accessibilityIdentifier = Self.text(options["passwordFieldTestID"])
       }
     }
 
@@ -239,7 +250,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
         self?.finish(presentation, index: index)
       }
-      action.accessibilityIdentifier = Self.testID(testIDs, index)
+      action.accessibilityIdentifier = Self.entry(testIDs, index)
 
       let color: UIColor? =
         style == .destructive
@@ -253,6 +264,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       }
       alert.addAction(action)
     }
+
+    alert.view.accessibilityIdentifier = Self.text(options["testID"])
 
     // Bold, and triggered by the keyboard's return key.
     if let preferredIndex, alert.actions.indices.contains(preferredIndex) {
@@ -298,6 +311,9 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     disabledIndices: Set<Int>,
     preferredIndex: Int?,
     testIDs: [String],
+    accessibilityLabels: [String],
+    accessibilityHints: [String],
+    sheetTestID: String?,
     tintColor: UIColor?,
     cancelButtonTintColor: UIColor?,
     destructiveColor: UIColor?,
@@ -311,7 +327,9 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
         isDestructive: destructiveIndices.contains(index),
         isEnabled: !disabledIndices.contains(index),
         isPreferred: index == preferredIndex,
-        testID: Self.testID(testIDs, index)
+        testID: Self.entry(testIDs, index),
+        accessibilityLabel: Self.entry(accessibilityLabels, index),
+        accessibilityHint: Self.entry(accessibilityHints, index)
       )
     }
 
@@ -349,6 +367,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     default: sheet.overrideUserInterfaceStyle = .unspecified
     }
     sheet.view.tintColor = tintColor
+    sheet.view.accessibilityIdentifier = sheetTestID
 
     if let controller = sheet.sheetPresentationController {
       controller.prefersGrabberVisible = true
@@ -465,11 +484,13 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     presentation.resolve(index)
   }
 
-  /// A button's testID, or nil for none (the wire sends '' for a gap).
-  private static func testID(_ testIDs: [String], _ index: Int) -> String? {
-    guard testIDs.indices.contains(index), !testIDs[index].isEmpty else { return nil }
+  /// A button's entry in one of the per-button arrays (testIDs,
+  /// accessibilityLabels, accessibilityHints), or nil for none: the wire
+  /// sends '' for a gap.
+  private static func entry(_ values: [String], _ index: Int) -> String? {
+    guard values.indices.contains(index), !values[index].isEmpty else { return nil }
 
-    return testIDs[index]
+    return values[index]
   }
 
   /// 'auto' fits the content (iOS 16+; half height on iOS 15), 'medium' is

@@ -82,6 +82,17 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
       return element;
     });
   }
+  if (options.accessibilityLabels()) {
+    payload[@"accessibilityLabels"] = RCTConvertVecToArray(*options.accessibilityLabels(), ^id(NSString *element) {
+      return element;
+    });
+  }
+  if (options.accessibilityHints()) {
+    payload[@"accessibilityHints"] = RCTConvertVecToArray(*options.accessibilityHints(), ^id(NSString *element) {
+      return element;
+    });
+  }
+  payload[@"testID"] = options.testID();
 
   // The anchor arrives already measured from the ref on the JS side, so this
   // module never resolves a view and needs no React Native view API.
@@ -146,12 +157,25 @@ RCT_EXPORT_METHOD(showPromptWithOptions
       return element;
     });
   }
+  if (options.accessibilityLabels()) {
+    payload[@"accessibilityLabels"] = RCTConvertVecToArray(*options.accessibilityLabels(), ^id(NSString *element) {
+      return element;
+    });
+  }
+  if (options.accessibilityHints()) {
+    payload[@"accessibilityHints"] = RCTConvertVecToArray(*options.accessibilityHints(), ^id(NSString *element) {
+      return element;
+    });
+  }
+  payload[@"testID"] = options.testID();
 
   payload[@"title"] = options.title();
   payload[@"message"] = options.message();
   payload[@"type"] = options.type();
   payload[@"placeholder"] = options.placeholder();
   payload[@"passwordPlaceholder"] = options.passwordPlaceholder();
+  payload[@"fieldTestID"] = options.fieldTestID();
+  payload[@"passwordFieldTestID"] = options.passwordFieldTestID();
   payload[@"defaultValue"] = options.defaultValue();
   payload[@"keyboardType"] = options.keyboardType();
   payload[@"tintColor"] = options.tintColor();

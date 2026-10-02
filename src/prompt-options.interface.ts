@@ -32,6 +32,11 @@ export interface PromptCommonOptionsInterface extends BaseOptionsInterface {
   /// Same as type: 'secure-text'. Kept for compatibility; type wins when both
   /// are set.
   secureTextEntry?: boolean;
+  /// Identifies the (first) text field in end-to-end tests, e.g. to type into
+  /// it. iOS: its accessibilityIdentifier; Android: its tag and resource id.
+  fieldTestID?: string;
+  /// Same as fieldTestID, for the password field of a 'login-password' prompt.
+  passwordFieldTestID?: string;
 }
 
 export type PromptAndroidOptionsInterface = BaseAndroidOptionsInterface;

@@ -31,6 +31,8 @@ import {
 | `onPress` | `() => void` | Runs when this button resolves the sheet. A prompt's receives `{ text, password? }`. |
 | `requiresText` | `boolean` | Prompts only: keeps the button disabled while a field is empty. |
 | `testID` | `string` | Finds the button in end-to-end tests; not shown or spoken. Every style on both platforms. See [Testing](testing.md#end-to-end-tests). |
+| `accessibilityLabel` | `string` | What screen readers say instead of the label. The iOS bottom sheet and every Android style; iOS alerts, action sheets and prompts ignore it, since `UIAlertAction` has no public API for it. |
+| `accessibilityHint` | `string` | Extra spoken guidance after the label, e.g. what the button does. Same coverage as `accessibilityLabel`. |
 
 ## Sheet options
 
@@ -50,6 +52,7 @@ import {
 | `anchorAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of an `'anchored'` popup relative to its anchor. `'start'` (default) aligns leading edges, flipping in RTL. |
 | `detents` | `('auto' \| 'medium' \| 'large')[]` | ✅ | ✅ | `'bottom'` only: the heights the sheet can rest at, opening at the first. See [Bottom sheets](bottom-sheet.md#heights). |
 | `onShow` | `() => void` | ✅ | ✅ | Called once the sheet is on screen, at most once and before the promise resolves. See [Behavior](behavior.md#when-onshow-fires). |
+| `testID` | `string` | ✅ | ✅ | Finds the sheet itself in end-to-end tests, e.g. to wait for it to appear. See [Testing](testing.md#end-to-end-tests). |
 
 ### `presentationStyle`
 
@@ -91,6 +94,8 @@ const anchorRef = useRef<View>(null);
 | `defaultValue` | `string` | Initial text in the (first) field. |
 | `keyboardType` | `'default' \| 'email-address' \| 'numeric' \| 'phone-pad' \| 'url'` | Keyboard for the (first) field. |
 | `secureTextEntry` | `boolean` | Same as `type: 'secure-text'`. Kept for compatibility; `type` wins when both are set. |
+| `fieldTestID` | `string` | Finds the (first) text field in end-to-end tests, e.g. to type into it. |
+| `passwordFieldTestID` | `string` | Finds the password field of a `'login-password'` prompt in end-to-end tests. |
 
 A `'login-password'` prompt marks its fields as username and password, so iOS AutoFill and Android autofill services can offer saved credentials.
 

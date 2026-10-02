@@ -56,6 +56,7 @@ internal object MaterialBottomSheetPresenter : SheetPresenter {
     dialog.setContentView(root)
     dialog.setCanceledOnTouchOutside(true)
     options.windowTitle?.let(dialog::setTitle)
+    root.applyTestID(options.testID)
 
     // Tint Material's own sheet background instead of replacing it, so its
     // rounded top corners and expansion animation stay intact, while the color

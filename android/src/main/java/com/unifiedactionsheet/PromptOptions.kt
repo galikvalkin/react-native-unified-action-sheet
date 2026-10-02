@@ -76,6 +76,12 @@ internal data class PromptOptions(
   /// Buttons kept disabled while any field is empty.
   val textRequiredButtonIndices: Set<Int>,
   val testIDs: List<String?>,
+  val accessibilityLabels: List<String?>,
+  val accessibilityHints: List<String?>,
+  /// End-to-end ids: the prompt itself, its field, its password field.
+  val testID: String?,
+  val fieldTestID: String?,
+  val passwordFieldTestID: String?,
   val tintColor: String?,
   val cancelButtonTintColor: String?,
   val destructiveColor: String?,
@@ -103,6 +109,9 @@ internal data class PromptOptions(
     anchorAlignment = AnchorAlignment.START,
     preferredButtonIndex = preferredButtonIndex,
     testIDs = testIDs,
+    accessibilityLabels = accessibilityLabels,
+    accessibilityHints = accessibilityHints,
+    testID = testID,
   )
 
   companion object {
@@ -128,7 +137,12 @@ internal data class PromptOptions(
         keyboardType = PromptKeyboardType.fromWire(optString(map, "keyboardType")),
         preferredButtonIndex = optInt(map, "preferredButtonIndex"),
         textRequiredButtonIndices = optIndices(map, "textRequiredButtonIndices"),
-        testIDs = ActionSheetOptions.optTestIDs(map),
+        testIDs = ActionSheetOptions.optAligned(map, "testIDs"),
+        accessibilityLabels = ActionSheetOptions.optAligned(map, "accessibilityLabels"),
+        accessibilityHints = ActionSheetOptions.optAligned(map, "accessibilityHints"),
+        testID = optString(map, "testID")?.takeIf { it.isNotEmpty() },
+        fieldTestID = optString(map, "fieldTestID")?.takeIf { it.isNotEmpty() },
+        passwordFieldTestID = optString(map, "passwordFieldTestID")?.takeIf { it.isNotEmpty() },
         tintColor = optString(map, "tintColor"),
         cancelButtonTintColor = optString(map, "cancelButtonTintColor"),
         destructiveColor = optString(map, "destructiveColor"),

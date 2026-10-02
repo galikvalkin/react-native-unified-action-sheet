@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the action or row on iOS (every style, alerts and prompts included), and the
   view tag and accessibility resource id of the row on Android. Detox, Maestro,
   Appium, XCUITest and UiAutomator can find buttons by it.
+- `testID` on the sheet or prompt itself, so end-to-end tests can wait for it
+  to appear, and `fieldTestID` / `passwordFieldTestID` on prompts, so they can
+  type into its fields.
+- `accessibilityLabel` and `accessibilityHint` on buttons, spoken instead of
+  and after the label. They apply to the iOS bottom sheet and every Android
+  style; iOS alerts, action sheets and prompts ignore them, since
+  `UIAlertAction` has no public API for either.
 
 ### Fixed
 

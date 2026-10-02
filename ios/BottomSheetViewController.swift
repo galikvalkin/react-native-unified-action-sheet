@@ -14,6 +14,9 @@ final class BottomSheetViewController: UIViewController {
     let isPreferred: Bool
     /// The button's accessibilityIdentifier, for end-to-end tests.
     let testID: String?
+    /// Spoken instead of the label, and after it; nil keeps UIKit's defaults.
+    let accessibilityLabel: String?
+    let accessibilityHint: String?
   }
 
   private let sheetTitle: String?
@@ -182,6 +185,10 @@ final class BottomSheetViewController: UIViewController {
     button.contentHorizontalAlignment = .leading
     button.isEnabled = row.isEnabled
     button.accessibilityIdentifier = row.testID
+    if let accessibilityLabel = row.accessibilityLabel {
+      button.accessibilityLabel = accessibilityLabel
+    }
+    button.accessibilityHint = row.accessibilityHint
     // A full-width row highlight, as in a list, rather than a dimmed title.
     button.configurationUpdateHandler = { button in
       var updated = button.configuration

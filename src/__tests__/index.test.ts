@@ -792,3 +792,79 @@ describe('onShow', () => {
     expect(onShow).not.toHaveBeenCalled();
   });
 });
+
+describe('accessibility labels and hints', () => {
+  it('sends them aligned with the buttons, empty where unset', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('android');
+    const options = [
+      {
+        label: '🗑',
+        accessibilityLabel: 'Delete',
+        accessibilityHint: 'Removes the item',
+      },
+      { label: 'Copy' },
+      {
+        label: 'Cancel',
+        style: 'cancel' as const,
+        accessibilityHint: 'Keeps the item',
+      },
+    ];
+
+    await showActionSheetWithOptions({ options });
+    await showPromptWithOptions({ options });
+
+    const expected = {
+      accessibilityLabels: ['Delete', '', ''],
+      accessibilityHints: ['Removes the item', '', 'Keeps the item'],
+    };
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject(expected);
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject(expected);
+  });
+
+  it('omits each array when no button sets it', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+
+    await showActionSheetWithOptions({
+      options: [{ label: 'A', accessibilityHint: 'Only a hint' }],
+    });
+
+    const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
+    expect(passed).not.toHaveProperty('accessibilityLabels');
+    expect(passed).toMatchObject({ accessibilityHints: ['Only a hint'] });
+  });
+});
+
+describe('sheet and field testIDs', () => {
+  it('passes the sheet testID and prompt field testIDs through', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      testID: 'share-sheet',
+    });
+    await showPromptWithOptions({
+      options: buttons('Sign in'),
+      type: 'login-password',
+      testID: 'sign-in-prompt',
+      fieldTestID: 'sign-in-email',
+      passwordFieldTestID: 'sign-in-password',
+    });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ testID: 'share-sheet' });
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject({
+      testID: 'sign-in-prompt',
+      fieldTestID: 'sign-in-email',
+      passwordFieldTestID: 'sign-in-password',
+    });
+  });
+});

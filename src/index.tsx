@@ -54,6 +54,9 @@ type WireButtons = {
   preferredButtonIndex?: number;
   /// Aligned with options; '' for a button without one.
   testIDs?: string[];
+  /// Same alignment as testIDs.
+  accessibilityLabels?: string[];
+  accessibilityHints?: string[];
 };
 
 type WireOptions = Omit<
@@ -102,6 +105,12 @@ const toWireButtons = (
   let cancelButtonIndex: number | undefined;
   let preferredButtonIndex: number | undefined;
   const testIDs = buttons.map((button) => button.testID ?? '');
+  const accessibilityLabels = buttons.map(
+    (button) => button.accessibilityLabel ?? ''
+  );
+  const accessibilityHints = buttons.map(
+    (button) => button.accessibilityHint ?? ''
+  );
 
   buttons.forEach((button, index) => {
     labels.push(button.label);
@@ -125,6 +134,8 @@ const toWireButtons = (
     ...(disabled.length === 0 ? {} : { disabledButtonIndices: disabled }),
     ...(preferredButtonIndex == null ? {} : { preferredButtonIndex }),
     ...(testIDs.some(Boolean) ? { testIDs } : {}),
+    ...(accessibilityLabels.some(Boolean) ? { accessibilityLabels } : {}),
+    ...(accessibilityHints.some(Boolean) ? { accessibilityHints } : {}),
   };
 };
 
