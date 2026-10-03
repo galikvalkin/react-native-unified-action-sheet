@@ -94,6 +94,11 @@ internal data class ActionSheetOptions(
   val detents: List<Detent> = emptyList(),
   /// Aligned with options; null where a button has none.
   val testIDs: List<String?> = emptyList(),
+  /// Same alignment: spoken instead of the label, and after it.
+  val accessibilityLabels: List<String?> = emptyList(),
+  val accessibilityHints: List<String?> = emptyList(),
+  /// The sheet's own id for end-to-end tests, on its dialog content.
+  val testID: String? = null,
 ) {
   /// For TalkBack: names the dialog window when it opens. The dialogs draw
   /// their own header, so this sets no visible title bar.
@@ -142,20 +147,24 @@ internal data class ActionSheetOptions(
         anchorAlignment = AnchorAlignment.fromWire(optString(map, "anchorAlignment")),
         preferredButtonIndex = optInt(map, "preferredButtonIndex"),
         detents = optDetents(map),
-        testIDs = optTestIDs(map),
+        testIDs = optAligned(map, "testIDs"),
+        accessibilityLabels = optAligned(map, "accessibilityLabels"),
+        accessibilityHints = optAligned(map, "accessibilityHints"),
+        testID = optString(map, "testID")?.takeIf { it.isNotEmpty() },
       )
     }
 
-    /// The wire sends '' for a button without a testID.
-    fun optTestIDs(map: ReadableMap): List<String?> {
-      val testIDs = mutableListOf<String?>()
-      map.getArray("testIDs")?.let { array ->
+    /// A per-button array (testIDs, accessibilityLabels, accessibilityHints).
+    /// The wire sends '' for a button without a value.
+    fun optAligned(map: ReadableMap, key: String): List<String?> {
+      val values = mutableListOf<String?>()
+      map.getArray(key)?.let { array ->
         for (index in 0 until array.size()) {
-          testIDs.add(array.getString(index)?.takeIf { it.isNotEmpty() })
+          values.add(array.getString(index)?.takeIf { it.isNotEmpty() })
         }
       }
 
-      return testIDs
+      return values
     }
 
     private fun optDetents(map: ReadableMap): List<Detent> {

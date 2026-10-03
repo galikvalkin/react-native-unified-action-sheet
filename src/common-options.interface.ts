@@ -11,6 +11,13 @@ export interface BaseButtonInterface {
   /// XCUITest, UiAutomator). Not shown or spoken. iOS: the action's or row's
   /// accessibilityIdentifier; Android: the row's tag and resource id.
   testID?: string;
+  /// What screen readers say instead of the label. iOS bottom sheet and every
+  /// Android style; iOS alerts, action sheets and prompts ignore it, since
+  /// UIAlertAction has no public API for it.
+  accessibilityLabel?: string;
+  /// Extra spoken guidance after the label, e.g. what the button does. Same
+  /// coverage as accessibilityLabel.
+  accessibilityHint?: string;
 }
 
 export interface BaseOptionsInterface {
@@ -25,6 +32,10 @@ export interface BaseOptionsInterface {
   /// most once, before the promise resolves, and not at all if it never
   /// appears (nothing to present from, or an unsupported platform).
   onShow?: () => void;
+  /// Identifies the sheet or prompt itself in end-to-end tests, e.g. to wait
+  /// for it to appear. iOS: the alert's or sheet's view accessibilityIdentifier;
+  /// Android: the dialog content's tag and resource id.
+  testID?: string;
 }
 
 export interface BaseAndroidOptionsInterface {

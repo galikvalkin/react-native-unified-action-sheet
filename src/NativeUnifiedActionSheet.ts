@@ -24,6 +24,9 @@ export interface Spec extends TurboModule {
       preferredButtonIndex?: number;
       detents?: string[];
       testIDs?: string[];
+      accessibilityLabels?: string[];
+      accessibilityHints?: string[];
+      testID?: string;
       anchorRect?: {
         x: number;
         y: number;
@@ -44,6 +47,11 @@ export interface Spec extends TurboModule {
       preferredButtonIndex?: number;
       textRequiredButtonIndices?: number[];
       testIDs?: string[];
+      accessibilityLabels?: string[];
+      accessibilityHints?: string[];
+      testID?: string;
+      fieldTestID?: string;
+      passwordFieldTestID?: string;
       type?: string;
       placeholder?: string;
       passwordPlaceholder?: string;

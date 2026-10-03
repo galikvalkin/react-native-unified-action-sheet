@@ -44,6 +44,24 @@ internal class OptionRow(
   }
 }
 
+/// An end-to-end id for any view: its tag (Detox) and its accessibility
+/// resource id (UiAutomator, Maestro, Appium). Rows set theirs in their own
+/// delegate; this is for the dialog content and prompt fields.
+internal fun View.applyTestID(testID: String?) {
+  if (testID == null) return
+
+  tag = testID
+  ViewCompat.setAccessibilityDelegate(
+    this,
+    object : AccessibilityDelegateCompat() {
+      override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {
+        super.onInitializeAccessibilityNodeInfo(host, info)
+        info.viewIdResourceName = testID
+      }
+    },
+  )
+}
+
 /// Every OptionRow below this view, in layout order.
 internal fun View.optionRows(): List<OptionRow> = when (this) {
   is OptionRow -> listOf(this)
@@ -94,6 +112,8 @@ internal fun buildContent(
         context = context,
         index = index,
         testID = options.testIDs.getOrNull(index),
+        accessibilityLabel = options.accessibilityLabels.getOrNull(index),
+        accessibilityHint = options.accessibilityHints.getOrNull(index),
         label = label,
         color = if (isDestructive) parseColor(options.destructiveColor) ?: palette.error else optionColor,
         centered = centerLabels,
@@ -114,6 +134,8 @@ internal fun buildContent(
             context = context,
             index = cancelIdx,
             testID = options.testIDs.getOrNull(cancelIdx),
+            accessibilityLabel = options.accessibilityLabels.getOrNull(cancelIdx),
+            accessibilityHint = options.accessibilityHints.getOrNull(cancelIdx),
             label = options.options[cancelIdx],
             color = cancelColor,
             centered = centerLabels,
@@ -149,6 +171,7 @@ internal fun buildPromptFields(
   val first = buildPromptField(
     context = context,
     palette = palette,
+    testID = options.fieldTestID,
     hint = options.placeholder,
     inputType = options.keyboardType.toInputType(options.type == PromptType.SECURE_TEXT),
     autofillHint = if (options.type == PromptType.LOGIN_PASSWORD) View.AUTOFILL_HINT_USERNAME else null,
@@ -163,6 +186,7 @@ internal fun buildPromptFields(
   val password = buildPromptField(
     context = context,
     palette = palette,
+    testID = options.passwordFieldTestID,
     hint = options.passwordPlaceholder,
     inputType = PromptKeyboardType.DEFAULT.toInputType(secure = true),
     autofillHint = View.AUTOFILL_HINT_PASSWORD,
@@ -174,6 +198,7 @@ internal fun buildPromptFields(
 private fun buildPromptField(
   context: Context,
   palette: SheetPalette,
+  testID: String?,
   hint: String?,
   inputType: Int,
   autofillHint: String?,
@@ -197,6 +222,7 @@ private fun buildPromptField(
     LinearLayout.LayoutParams.MATCH_PARENT,
     LinearLayout.LayoutParams.WRAP_CONTENT,
   )
+  applyTestID(testID)
 }
 
 private fun buildHeader(
@@ -220,6 +246,8 @@ private fun buildOption(
   context: Context,
   index: Int,
   testID: String?,
+  accessibilityLabel: String?,
+  accessibilityHint: String?,
   label: String,
   color: Int,
   centered: Boolean,
@@ -239,7 +267,7 @@ private fun buildOption(
   isFocusable = true
   setRowEnabled(enabled)
   setOnClickListener { onPress() }
-  contentDescription = label
+  contentDescription = accessibilityLabel ?: label
   ViewCompat.setAccessibilityDelegate(
     this,
     object : AccessibilityDelegateCompat() {
@@ -250,6 +278,7 @@ private fun buildOption(
         super.onInitializeAccessibilityNodeInfo(host, info)
         info.className = Button::class.java.name
         testID?.let { info.viewIdResourceName = it }
+        accessibilityHint?.let { info.hintText = it }
       }
     },
   )

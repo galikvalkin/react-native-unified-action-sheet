@@ -63,6 +63,9 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
           {
             label: 'Erase forever',
             style: 'destructive',
+            // Spoken after the label (bottom sheet and Android; iOS alerts
+            // have no public API for it).
+            accessibilityHint: 'Deletes the item permanently',
             onPress: press('Erase forever'),
           },
           option('Archive'),
@@ -299,6 +302,8 @@ export default function ActionSheetDemoApp() {
       })),
       // Overwritten by the button's own onPress once one is tapped.
       onShow: () => setLastResult(`${demo.label} → shown`),
+      // The sheet's own id, e.g. 'demo-bottom-sheet-sheet', to wait for it.
+      testID: `${toTestID(demo.label)}-sheet`,
     });
 
     if (result.reason === 'dismissed' || result.buttonIndex < 0) {
@@ -393,6 +398,8 @@ export default function ActionSheetDemoApp() {
     // nothing at all on Android.
     const result = await showPromptWithOptions({
       onShow: () => setLastResult('Prompt → shown'),
+      testID: 'demo-rename-prompt',
+      fieldTestID: 'demo-rename-field',
       title: 'Rename item',
       message: 'Type a new name.',
       placeholder: 'New name',
@@ -457,6 +464,8 @@ export default function ActionSheetDemoApp() {
       type: 'login-password',
       placeholder: 'Email',
       passwordPlaceholder: 'Password',
+      fieldTestID: 'demo-sign-in-email',
+      passwordFieldTestID: 'demo-sign-in-password',
       keyboardType: 'email-address',
       options: [
         {
