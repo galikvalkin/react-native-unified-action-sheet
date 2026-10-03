@@ -43,9 +43,9 @@ import {
 | `title` | `string` | ✅ | ✅ | Sheet title. |
 | `message` | `string` | ✅ | ✅ | Secondary text under the title. |
 | `presentationStyle` | `'centered' \| 'anchored' \| 'bottom'` | ✅ | ✅ | How the sheet is presented; see the table below. |
-| `anchor` | ref, or anything with `measureInWindow` | ✅ | ✅ | What an `'anchored'` sheet attaches to. Without a measurable anchor it falls back to a centered dialog. Ignored by `'bottom'`. |
+| `anchor` | ref, or anything with `measureInWindow` | ✅ | ✅ | What an `'anchored'` sheet attaches to. Without a measurable anchor (or one that does not answer within 500 ms, e.g. because it unmounted) it falls back to a centered dialog. Ignored by `'bottom'`. |
 | `userInterfaceStyle` | `'light' \| 'dark'` | ✅ | ✅ | Forces the appearance. Defaults to the system setting. |
-| `tintColor` | `string` | ✅ | ✅ | Text color of non-destructive buttons. |
+| `tintColor` | `string` | ✅ | ✅ | Text color of non-destructive buttons. Any color React Native accepts: `'#RGB'`, `'#RRGGBB'`, `'#RRGGBBAA'`, `'rgb()'`/`'rgba()'`, `'hsl()'` or a named color. An unparseable value is ignored. Same for the two below. |
 | `cancelButtonTintColor` | `string` | ✅ | ✅ | Text color of the cancel button; overrides `tintColor` for that row. |
 | `destructiveColor` | `string` | ✅ | ✅ | Destructive row color, instead of Android's palette error color or iOS system red. |
 | `buttonTextAlignment` | `'start' \| 'center'` | — | ✅ | Alignment of button labels. Defaults to `'start'`, which follows layout direction. |

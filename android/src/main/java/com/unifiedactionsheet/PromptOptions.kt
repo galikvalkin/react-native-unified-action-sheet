@@ -82,9 +82,9 @@ internal data class PromptOptions(
   val testID: String?,
   val fieldTestID: String?,
   val passwordFieldTestID: String?,
-  val tintColor: String?,
-  val cancelButtonTintColor: String?,
-  val destructiveColor: String?,
+  val tintColor: Int?,
+  val cancelButtonTintColor: Int?,
+  val destructiveColor: Int?,
   val buttonTextAlignment: ButtonTextAlignment,
   val userInterfaceStyle: ForcedAppearance,
 ) {
@@ -143,9 +143,9 @@ internal data class PromptOptions(
         testID = optString(map, "testID")?.takeIf { it.isNotEmpty() },
         fieldTestID = optString(map, "fieldTestID")?.takeIf { it.isNotEmpty() },
         passwordFieldTestID = optString(map, "passwordFieldTestID")?.takeIf { it.isNotEmpty() },
-        tintColor = optString(map, "tintColor"),
-        cancelButtonTintColor = optString(map, "cancelButtonTintColor"),
-        destructiveColor = optString(map, "destructiveColor"),
+        tintColor = optColor(map, "tintColor"),
+        cancelButtonTintColor = optColor(map, "cancelButtonTintColor"),
+        destructiveColor = optColor(map, "destructiveColor"),
         buttonTextAlignment = ButtonTextAlignment.fromWire(optString(map, "buttonTextAlignment")),
         userInterfaceStyle = ForcedAppearance.fromWire(optString(map, "userInterfaceStyle")),
       )
@@ -164,6 +164,11 @@ internal data class PromptOptions(
 
     private fun optInt(map: ReadableMap, key: String): Int? =
       if (map.hasKey(key) && !map.isNull(key)) map.getInt(key) else null
+
+    /// A color processed by React Native's processColor: an ARGB number. Read
+    /// as a double and truncated to 32 bits, so an unsigned value works too.
+    private fun optColor(map: ReadableMap, key: String): Int? =
+      if (map.hasKey(key) && !map.isNull(key)) map.getDouble(key).toLong().toInt() else null
 
     private fun optString(map: ReadableMap, key: String): String? =
       if (map.hasKey(key) && !map.isNull(key)) map.getString(key) else null
