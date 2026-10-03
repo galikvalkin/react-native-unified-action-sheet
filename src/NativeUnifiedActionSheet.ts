@@ -13,9 +13,9 @@ export interface Spec extends TurboModule {
       destructiveButtonIndices?: number[];
       title?: string;
       message?: string;
-      tintColor?: string;
-      cancelButtonTintColor?: string;
-      destructiveColor?: string;
+      tintColor?: number;
+      cancelButtonTintColor?: number;
+      destructiveColor?: number;
       buttonTextAlignment?: string;
       disabledButtonIndices?: number[];
       userInterfaceStyle?: string;
@@ -57,9 +57,9 @@ export interface Spec extends TurboModule {
       passwordPlaceholder?: string;
       defaultValue?: string;
       keyboardType?: string;
-      tintColor?: string;
-      cancelButtonTintColor?: string;
-      destructiveColor?: string;
+      tintColor?: number;
+      cancelButtonTintColor?: number;
+      destructiveColor?: number;
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
     },

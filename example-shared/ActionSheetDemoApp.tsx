@@ -1,6 +1,9 @@
 import { Children, forwardRef, useMemo, useRef, useState } from 'react';
 import type { ComponentRef, ReactNode } from 'react';
 import {
+  BackHandler,
+  Modal as CoreModal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -276,6 +279,39 @@ const DemoButton = forwardRef<
 
 DemoButton.displayName = 'DemoButton';
 
+/// Bug repros: each case says what correct behavior looks like, so a fix is
+/// verified by running it. Colors are compared by eye.
+const colorReproCases: DemoCase[] = [
+  {
+    label: "Colors: React Native's #RRGGBBAA",
+    options: {
+      title: 'Expected: semi-transparent RED rows',
+      message:
+        "tintColor '#FF000080' is red at 50% opacity in React Native. Bug: rows are opaque dark blue (read as #AARRGGBB).",
+      options: [
+        { label: 'Should be faded red' },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+      tintColor: '#FF000080',
+    },
+  },
+  {
+    label: 'Colors: short hex and named',
+    options: {
+      title: 'Expected: RED rows, GREEN Delete',
+      message:
+        "tintColor '#F00' and destructiveColor 'green'. Bug: Android ignores '#F00' (default color), iOS ignores 'green' (system red).",
+      options: [
+        { label: 'Should be red' },
+        { label: 'Delete (should be green)', style: 'destructive' },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+      tintColor: '#F00',
+      destructiveColor: 'green',
+    },
+  },
+];
+
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
@@ -286,6 +322,75 @@ export default function ActionSheetDemoApp() {
   const palette = usePalette();
   const [isModalVisible, setModalVisible] = useState(false);
   const anchorRef = useRef<ComponentRef<typeof Pressable> | null>(null);
+  const [isCoreModalVisible, setCoreModalVisible] = useState(false);
+  const [isDisposableAnchorMounted, setDisposableAnchorMounted] =
+    useState(false);
+  const disposableAnchorRef = useRef<ComponentRef<typeof View> | null>(null);
+
+  /// The symptom of a hang bug is a promise that never settles: report it.
+  const watch = <T,>(label: string, promise: Promise<T>): Promise<T> => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) setLastResult(`${label} → BUG: no result after 5s`);
+    }, 5000);
+
+    return promise.finally(() => {
+      settled = true;
+      clearTimeout(timer);
+    });
+  };
+
+  /// Android repro: the screen is closing when the queued sheet reaches the
+  /// UI thread. Bug, depending on timing: a crash (BadTokenException), or the
+  /// sheet's window outliving the screen, logged as
+  /// `adb logcat | grep WindowLeaked`. Fixed: neither; the app just closes.
+  const reproClosingScreen = () => {
+    BackHandler.exitApp();
+    showActionSheetWithOptions({
+      title: 'Opened while the screen closes',
+      options: [{ label: 'OK' }, { label: 'Cancel', style: 'cancel' }],
+    });
+  };
+
+  /// iOS repro: a sheet requested while a modal is still animating away.
+  /// Bug: nothing appears and the promise never settles. Fixed: the sheet
+  /// appears once the modal has closed.
+  const reproDuringModalDismissal = async () => {
+    setCoreModalVisible(false);
+    // Long enough for the modal's dismissal to be under way.
+    await delay(50);
+    const result = await watch(
+      'Sheet during modal dismissal',
+      showActionSheetWithOptions({
+        title: 'Opened while a modal closes',
+        message: 'Seeing this means the bug is fixed.',
+        options: [{ label: 'OK' }, { label: 'Cancel', style: 'cancel' }],
+      })
+    );
+    setLastResult(`Sheet during modal dismissal → ${result.reason}`);
+  };
+
+  /// Repro: the anchor is measured after its view has unmounted. Bug: the
+  /// measurement never answers, nothing appears, the promise never settles.
+  /// Fixed: a centered sheet appears within a moment.
+  const reproDetachedAnchor = async () => {
+    setDisposableAnchorMounted(true);
+    await delay(100);
+    const node = disposableAnchorRef.current;
+    setDisposableAnchorMounted(false);
+    await delay(100);
+    const result = await watch(
+      'Detached anchor',
+      showActionSheetWithOptions({
+        title: 'Anchor unmounted',
+        message: 'Seeing this means the bug is fixed (or never reproduced).',
+        options: [{ label: 'OK' }, { label: 'Cancel', style: 'cancel' }],
+        presentationStyle: 'anchored',
+        anchor: node,
+      })
+    );
+    setLastResult(`Detached anchor → ${result.reason}`);
+  };
 
   const demoCases = useMemo(() => buildDemoCases(setLastResult), []);
 
@@ -599,6 +704,41 @@ export default function ActionSheetDemoApp() {
             tone="alt"
           />
         </Section>
+
+        <Section title="Bug repros">
+          {Platform.OS === 'android' ? (
+            <DemoButton
+              label="Open while the screen closes (exits the app)"
+              onPress={reproClosingScreen}
+              tone="alt"
+            />
+          ) : null}
+          <DemoButton
+            label="Close a modal, then open a sheet"
+            onPress={() => setCoreModalVisible(true)}
+            tone="alt"
+          />
+          <DemoButton
+            label="Anchored to a view that unmounts"
+            onPress={reproDetachedAnchor}
+            tone="alt"
+          />
+          {isDisposableAnchorMounted ? (
+            <View ref={disposableAnchorRef} collapsable={false}>
+              <Text style={{ color: palette.secondaryText }}>
+                Anchor about to unmount
+              </Text>
+            </View>
+          ) : null}
+          {colorReproCases.map((demo) => (
+            <DemoButton
+              key={demo.label}
+              label={demo.label}
+              onPress={() => show(demo)}
+              tone="alt"
+            />
+          ))}
+        </Section>
       </ScrollView>
       <Modal
         useNativeDriver
@@ -622,6 +762,30 @@ export default function ActionSheetDemoApp() {
           />
         </View>
       </Modal>
+      {/* React Native's own Modal: its dismissal is a native view controller
+          transition, which is what the iOS repro needs. */}
+      <CoreModal
+        transparent
+        animationType="slide"
+        visible={isCoreModalVisible}
+        onRequestClose={() => setCoreModalVisible(false)}
+      >
+        <View style={styles.coreModalBackdrop}>
+          <View style={[styles.modalCard, { backgroundColor: palette.card }]}>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>
+              React Native Modal
+            </Text>
+            <Text style={[styles.modalText, { color: palette.secondaryText }]}>
+              The button closes this modal and opens a sheet while it is still
+              animating away.
+            </Text>
+            <DemoButton
+              label="Close modal and open a sheet"
+              onPress={reproDuringModalDismissal}
+            />
+          </View>
+        </View>
+      </CoreModal>
     </SafeAreaView>
   );
 }
@@ -629,6 +793,12 @@ export default function ActionSheetDemoApp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  coreModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#00000066',
   },
   header: {
     paddingHorizontal: 16,
