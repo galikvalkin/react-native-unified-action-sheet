@@ -340,10 +340,12 @@ export default function ActionSheetDemoApp() {
     });
   };
 
-  /// Android repro: the screen is closing when the queued sheet reaches the
-  /// UI thread. Bug, depending on timing: a crash (BadTokenException), or the
-  /// sheet's window outliving the screen, logged as
-  /// `adb logcat | grep WindowLeaked`. Fixed: neither; the app just closes.
+  /// Android repro: the screen goes away while the sheet is being shown.
+  /// Needs Developer options > "Don't keep activities" (then force-stop and
+  /// relaunch): without it, Android 12+ only moves the app to the background
+  /// on exitApp() and the screen survives. Bug: the sheet's window outlives
+  /// the screen, logged as `adb logcat | grep WindowLeaked`, or a crash
+  /// (BadTokenException). Fixed: neither; the app just closes.
   const reproClosingScreen = () => {
     BackHandler.exitApp();
     showActionSheetWithOptions({
@@ -708,7 +710,7 @@ export default function ActionSheetDemoApp() {
         <Section title="Bug repros">
           {Platform.OS === 'android' ? (
             <DemoButton
-              label="Open while the screen closes (exits the app)"
+              label="Open while the screen closes (needs Don't keep activities)"
               onPress={reproClosingScreen}
               tone="alt"
             />
