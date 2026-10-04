@@ -29,11 +29,6 @@ internal interface SheetPresenter {
 }
 
 internal object CenteredDialogPresenter : SheetPresenter {
-  private const val CENTERED_CORNER_RADIUS_DP = 28
-  private const val CENTERED_MARGIN_DP = 24
-  private const val CENTERED_MIN_WIDTH_DP = 280
-  private const val CENTERED_MAX_WIDTH_DP = 560
-
   override fun build(
     activity: Activity,
     options: ActionSheetOptions,
@@ -44,49 +39,66 @@ internal object CenteredDialogPresenter : SheetPresenter {
     val dialog = AppCompatDialog(activity, dialogTheme(isDark))
     dialog.supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
 
-    val context: Context = dialog.context
-    val container = buildContent(context, options, palette) { index -> onSelect(dialog, index) }
-
-    dialog.setContentView(container)
-    dialog.setCanceledOnTouchOutside(true)
-    options.windowTitle?.let(dialog::setTitle)
-    container.applyTestID(options.testID)
-
-    val background = GradientDrawable().apply {
-      cornerRadius = dp(context, CENTERED_CORNER_RADIUS_DP).toFloat()
-      setColor(palette.surface)
-    }
-    dialog.window?.setBackgroundDrawable(background)
-    container.background = background.constantState?.newDrawable() ?: background
-    container.clipToOutline = true
-
-    val metrics = context.resources.displayMetrics
-    val width = (metrics.widthPixels - 2 * dp(context, CENTERED_MARGIN_DP))
-      .coerceAtMost(dp(context, CENTERED_MAX_WIDTH_DP))
-      .coerceAtLeast(minOf(dp(context, CENTERED_MIN_WIDTH_DP), metrics.widthPixels))
-    dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
-
-    val maxHeight = (metrics.heightPixels * MAX_HEIGHT_PERCENT) / 100
-    container.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-      override fun onLayoutChange(
-        view: View,
-        left: Int,
-        top: Int,
-        right: Int,
-        bottom: Int,
-        oldLeft: Int,
-        oldTop: Int,
-        oldRight: Int,
-        oldBottom: Int,
-      ) {
-        if (container.height <= maxHeight) return
-        container.removeOnLayoutChangeListener(this)
-        dialog.window?.setLayout(width, maxHeight)
-      }
-    })
+    val container = buildContent(dialog.context, options, palette) { index -> onSelect(dialog, index) }
+    dialog.setCenteredContent(container, options, palette, capHeight = true)
 
     return dialog
   }
+}
+
+private const val CENTERED_CORNER_RADIUS_DP = 28
+private const val CENTERED_MARGIN_DP = 24
+private const val CENTERED_MIN_WIDTH_DP = 280
+private const val CENTERED_MAX_WIDTH_DP = 560
+
+/// The centered dialog's frame, shared by sheets and prompts: a rounded
+/// surface, a clamped width, and for sheets a height cap, past which the rows
+/// scroll. A prompt is short, and the keyboard resizes it anyway.
+private fun AppCompatDialog.setCenteredContent(
+  container: View,
+  options: SheetContent,
+  palette: SheetPalette,
+  capHeight: Boolean,
+) {
+  setContentView(container)
+  setCanceledOnTouchOutside(true)
+  options.windowTitle?.let(::setTitle)
+  container.applyTestID(options.testID)
+
+  val background = GradientDrawable().apply {
+    cornerRadius = dp(context, CENTERED_CORNER_RADIUS_DP).toFloat()
+    setColor(palette.surface)
+  }
+  window?.setBackgroundDrawable(background)
+  container.background = background.constantState?.newDrawable() ?: background
+  container.clipToOutline = true
+
+  val metrics = context.resources.displayMetrics
+  val width = (metrics.widthPixels - 2 * dp(context, CENTERED_MARGIN_DP))
+    .coerceAtMost(dp(context, CENTERED_MAX_WIDTH_DP))
+    .coerceAtLeast(minOf(dp(context, CENTERED_MIN_WIDTH_DP), metrics.widthPixels))
+  window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
+
+  if (!capHeight) return
+
+  val maxHeight = (metrics.heightPixels * MAX_HEIGHT_PERCENT) / 100
+  container.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+    override fun onLayoutChange(
+      view: View,
+      left: Int,
+      top: Int,
+      right: Int,
+      bottom: Int,
+      oldLeft: Int,
+      oldTop: Int,
+      oldRight: Int,
+      oldBottom: Int,
+    ) {
+      if (container.height <= maxHeight) return
+      container.removeOnLayoutChangeListener(this)
+      window?.setLayout(width, maxHeight)
+    }
+  })
 }
 
 /// What the prompt's fields held. password is empty unless LOGIN_PASSWORD.
@@ -120,7 +132,7 @@ internal fun buildPromptDialog(
 
   val container = buildContent(
     context = context,
-    options = options.toSheetOptions(),
+    options = options,
     palette = palette,
     inputView = input,
   ) { index -> onSelect(dialog, index, currentValues()) }
@@ -128,11 +140,12 @@ internal fun buildPromptDialog(
   val rows = container.optionRows()
 
   // requiresText: those buttons stay disabled while any field is empty.
-  if (options.textRequiredButtonIndices.isNotEmpty()) {
+  val textRequiredRows = rows.filter { options.buttons[it.index].requiresText }
+  if (textRequiredRows.isNotEmpty()) {
     val update = {
       val filled = fields.all { !it.text.isNullOrEmpty() }
-      rows.filter { it.index in options.textRequiredButtonIndices }.forEach { row ->
-        row.setRowEnabled(filled && row.index !in options.disabledButtonIndices)
+      textRequiredRows.forEach { row ->
+        row.setRowEnabled(filled && !options.buttons[row.index].isDisabled)
       }
     }
     val watcher = object : TextWatcher {
@@ -150,7 +163,7 @@ internal fun buildPromptDialog(
   fields.forEachIndexed { index, field ->
     field.imeOptions = if (index == fields.lastIndex) EditorInfo.IME_ACTION_DONE else EditorInfo.IME_ACTION_NEXT
   }
-  val preferredRow = rows.firstOrNull { it.index == options.preferredButtonIndex }
+  val preferredRow = rows.firstOrNull { options.buttons[it.index].isPreferred }
   if (preferredRow != null) {
     fields.last().setOnEditorActionListener { _, actionId, _ ->
       if (actionId != EditorInfo.IME_ACTION_DONE || !preferredRow.isEnabled) return@setOnEditorActionListener false
@@ -160,24 +173,7 @@ internal fun buildPromptDialog(
     }
   }
 
-  dialog.setContentView(container)
-  dialog.setCanceledOnTouchOutside(true)
-  options.toSheetOptions().windowTitle?.let(dialog::setTitle)
-  container.applyTestID(options.testID)
-
-  val background = GradientDrawable().apply {
-    cornerRadius = dp(context, PROMPT_CORNER_RADIUS_DP).toFloat()
-    setColor(palette.surface)
-  }
-  dialog.window?.setBackgroundDrawable(background)
-  container.background = background.constantState?.newDrawable() ?: background
-  container.clipToOutline = true
-
-  val metrics = context.resources.displayMetrics
-  val width = (metrics.widthPixels - 2 * dp(context, PROMPT_MARGIN_DP))
-    .coerceAtMost(dp(context, PROMPT_MAX_WIDTH_DP))
-    .coerceAtLeast(minOf(dp(context, PROMPT_MIN_WIDTH_DP), metrics.widthPixels))
-  dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
+  dialog.setCenteredContent(container, options, palette, capHeight = false)
 
   // A prompt exists to be typed into, so raise the keyboard with it rather than
   // making the user tap the field first.
@@ -186,11 +182,6 @@ internal fun buildPromptDialog(
 
   return dialog to currentValues
 }
-
-private const val PROMPT_CORNER_RADIUS_DP = 28
-private const val PROMPT_MARGIN_DP = 24
-private const val PROMPT_MIN_WIDTH_DP = 280
-private const val PROMPT_MAX_WIDTH_DP = 560
 
 internal class AnchoredDialogPresenter(private val anchorRect: Rect) : SheetPresenter {
   override fun build(

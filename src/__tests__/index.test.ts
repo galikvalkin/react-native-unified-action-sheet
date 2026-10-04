@@ -182,13 +182,13 @@ describe('Android', () => {
   });
 });
 
-describe('button flattening', () => {
-  it('derives labels and every index set from the buttons', async () => {
+describe('wire buttons', () => {
+  it('sends the buttons as objects, without onPress', async () => {
     const { showActionSheetWithOptions } = loadIndex('android');
 
     await showActionSheetWithOptions({
       options: [
-        { label: 'Delete', style: 'destructive' },
+        { label: 'Delete', style: 'destructive', onPress: () => {} },
         { label: 'Erase', style: 'destructive' },
         { label: 'Archive', disabled: true },
         { label: 'Cancel', style: 'cancel' },
@@ -196,15 +196,17 @@ describe('button flattening', () => {
     });
 
     const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
-    expect(passed).toMatchObject({
-      options: ['Delete', 'Erase', 'Archive', 'Cancel'],
-      destructiveButtonIndices: [0, 1],
-      disabledButtonIndices: [2],
-      cancelButtonIndex: 3,
+    expect(passed).toEqual({
+      buttons: [
+        { label: 'Delete', style: 'destructive' },
+        { label: 'Erase', style: 'destructive' },
+        { label: 'Archive', disabled: true },
+        { label: 'Cancel', style: 'cancel' },
+      ],
     });
   });
 
-  it('takes only the first button styled cancel', async () => {
+  it('keeps cancel on the first button styled cancel only', async () => {
     const { showActionSheetWithOptions } = loadIndex('android');
 
     await showActionSheetWithOptions({
@@ -215,16 +217,18 @@ describe('button flattening', () => {
     });
 
     const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
-    expect(passed).toMatchObject({ cancelButtonIndex: 0 });
+    expect(passed).toEqual({
+      buttons: [{ label: 'Nope', style: 'cancel' }, { label: 'Cancel' }],
+    });
   });
 
-  it('omits the index sets entirely when nothing is styled', async () => {
+  it('sends bare labels when nothing is set', async () => {
     const { showActionSheetWithOptions } = loadIndex('android');
 
     await showActionSheetWithOptions({ options: buttons('A', 'B') });
 
     const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
-    expect(passed).toEqual({ options: ['A', 'B'] });
+    expect(passed).toEqual({ buttons: [{ label: 'A' }, { label: 'B' }] });
   });
 
   it('allows a disabled destructive button', async () => {
@@ -235,9 +239,8 @@ describe('button flattening', () => {
     });
 
     const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
-    expect(passed).toMatchObject({
-      destructiveButtonIndices: [0],
-      disabledButtonIndices: [0],
+    expect(passed).toEqual({
+      buttons: [{ label: 'Delete', style: 'destructive', disabled: true }],
     });
   });
 });
@@ -403,7 +406,7 @@ describe('per-button onPress', () => {
 });
 
 describe('showPromptWithOptions', () => {
-  it('flattens buttons into labels and index sets, like the sheet does', async () => {
+  it('sends buttons the way the sheet does', async () => {
     const { showPromptWithOptions } = loadIndex('android');
 
     await showPromptWithOptions({
@@ -423,10 +426,12 @@ describe('showPromptWithOptions', () => {
       {
         title: 'Rename',
         placeholder: 'New name',
-        options: ['Save', 'Delete', 'Nope', 'Cancel'],
-        cancelButtonIndex: 3,
-        destructiveButtonIndices: [1],
-        disabledButtonIndices: [2],
+        buttons: [
+          { label: 'Save' },
+          { label: 'Delete', style: 'destructive' },
+          { label: 'Nope', disabled: true },
+          { label: 'Cancel', style: 'cancel' },
+        ],
         type: 'plain-text',
       },
       expect.any(Function)
@@ -625,22 +630,19 @@ describe('preferred button', () => {
     await showActionSheetWithOptions({ options });
     await showPromptWithOptions({ options });
 
+    const expected = {
+      buttons: [
+        { label: 'A' },
+        { label: 'B', preferred: true },
+        { label: 'C' },
+      ],
+    };
     expect(
       mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
-    ).toMatchObject({ preferredButtonIndex: 1 });
+    ).toMatchObject(expected);
     expect(
       mockedNative().showPromptWithOptions.mock.calls[0]![0]
-    ).toMatchObject({ preferredButtonIndex: 1 });
-  });
-
-  it('sends nothing when no button is preferred', async () => {
-    const { showActionSheetWithOptions } = loadIndex('android');
-
-    await showActionSheetWithOptions({ options: buttons('A', 'B') });
-
-    expect(
-      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
-    ).not.toHaveProperty('preferredButtonIndex');
+    ).toMatchObject(expected);
   });
 });
 
@@ -711,7 +713,7 @@ describe('prompt types', () => {
     expect(onPress).toHaveBeenCalledWith({ text: 'ann', password: 's3cret' });
   });
 
-  it('sends the buttons that require text, and omits the set when none do', async () => {
+  it('marks the buttons that require text, and only those', async () => {
     const { showPromptWithOptions } = loadIndex('ios');
 
     await showPromptWithOptions({
@@ -720,16 +722,19 @@ describe('prompt types', () => {
         { label: 'Cancel', style: 'cancel' },
       ],
     });
-    await showPromptWithOptions({ options: buttons('OK') });
 
-    const calls = mockedNative().showPromptWithOptions.mock.calls;
-    expect(calls[0]![0]).toMatchObject({ textRequiredButtonIndices: [0] });
-    expect(calls[1]![0]).not.toHaveProperty('textRequiredButtonIndices');
+    const [passed] = mockedNative().showPromptWithOptions.mock.calls[0]!;
+    expect(passed).toMatchObject({
+      buttons: [
+        { label: 'Save', requiresText: true },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
   });
 });
 
 describe('testID', () => {
-  it('sends testIDs aligned with the buttons, empty where unset', async () => {
+  it("sends each button's testID, and none where unset", async () => {
     const { showActionSheetWithOptions, showPromptWithOptions } =
       loadIndex('ios');
     const options = [
@@ -741,23 +746,19 @@ describe('testID', () => {
     await showActionSheetWithOptions({ options });
     await showPromptWithOptions({ options });
 
-    const expected = { testIDs: ['sheet-share', '', 'sheet-cancel'] };
+    const expected = {
+      buttons: [
+        { label: 'Share', testID: 'sheet-share' },
+        { label: 'Copy' },
+        { label: 'Cancel', style: 'cancel', testID: 'sheet-cancel' },
+      ],
+    };
     expect(
       mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
     ).toMatchObject(expected);
     expect(
       mockedNative().showPromptWithOptions.mock.calls[0]![0]
     ).toMatchObject(expected);
-  });
-
-  it('omits testIDs when no button sets one', async () => {
-    const { showActionSheetWithOptions } = loadIndex('android');
-
-    await showActionSheetWithOptions({ options: buttons('A', 'B') });
-
-    expect(
-      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
-    ).not.toHaveProperty('testIDs');
   });
 });
 
@@ -805,7 +806,7 @@ describe('onShow', () => {
 });
 
 describe('accessibility labels and hints', () => {
-  it('sends them aligned with the buttons, empty where unset', async () => {
+  it('sends them on their buttons, and none where unset', async () => {
     const { showActionSheetWithOptions, showPromptWithOptions } =
       loadIndex('android');
     const options = [
@@ -826,8 +827,19 @@ describe('accessibility labels and hints', () => {
     await showPromptWithOptions({ options });
 
     const expected = {
-      accessibilityLabels: ['Delete', '', ''],
-      accessibilityHints: ['Removes the item', '', 'Keeps the item'],
+      buttons: [
+        {
+          label: '🗑',
+          accessibilityLabel: 'Delete',
+          accessibilityHint: 'Removes the item',
+        },
+        { label: 'Copy' },
+        {
+          label: 'Cancel',
+          style: 'cancel',
+          accessibilityHint: 'Keeps the item',
+        },
+      ],
     };
     expect(
       mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
@@ -835,18 +847,6 @@ describe('accessibility labels and hints', () => {
     expect(
       mockedNative().showPromptWithOptions.mock.calls[0]![0]
     ).toMatchObject(expected);
-  });
-
-  it('omits each array when no button sets it', async () => {
-    const { showActionSheetWithOptions } = loadIndex('ios');
-
-    await showActionSheetWithOptions({
-      options: [{ label: 'A', accessibilityHint: 'Only a hint' }],
-    });
-
-    const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
-    expect(passed).not.toHaveProperty('accessibilityLabels');
-    expect(passed).toMatchObject({ accessibilityHints: ['Only a hint'] });
   });
 });
 

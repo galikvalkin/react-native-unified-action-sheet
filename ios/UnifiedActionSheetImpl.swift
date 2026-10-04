@@ -16,26 +16,11 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     onShow: @escaping () -> Void,
     completion: @escaping (Int) -> Void
   ) {
-    let labels = options["options"] as? [String] ?? []
-    let cancelButtonIndex = (options["cancelButtonIndex"] as? NSNumber)?.intValue ?? -1
-    let destructiveIndices = Set(
-      (options["destructiveButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
-    )
-    let disabledIndices = Set(
-      (options["disabledButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
-    )
-    let tintColor = Self.color(options["tintColor"])
-    let cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
-    let destructiveColor = Self.color(options["destructiveColor"])
-    let preferredIndex = (options["preferredButtonIndex"] as? NSNumber)?.intValue
-    let testIDs = options["testIDs"] as? [String] ?? []
-    let accessibilityLabels = options["accessibilityLabels"] as? [String] ?? []
-    let accessibilityHints = options["accessibilityHints"] as? [String] ?? []
-    let sheetTestID = Self.text(options["testID"])
+    let content = SheetContent(options)
 
     guard let parent = Self.presentedViewController() else {
       // Never shown, so onShow is never called.
-      completion(cancelButtonIndex)
+      completion(content.cancelButtonIndex)
 
       return
     }
@@ -48,19 +33,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     {
       presentBottomSheet(
         on: parent,
-        options: options,
-        labels: labels,
-        cancelButtonIndex: cancelButtonIndex,
-        destructiveIndices: destructiveIndices,
-        disabledIndices: disabledIndices,
-        preferredIndex: preferredIndex,
-        testIDs: testIDs,
-        accessibilityLabels: accessibilityLabels,
-        accessibilityHints: accessibilityHints,
-        sheetTestID: sheetTestID,
-        tintColor: tintColor,
-        cancelButtonTintColor: cancelButtonTintColor,
-        destructiveColor: destructiveColor,
+        content: content,
+        detents: options["detents"] as? [String] ?? [],
         onShow: onShow,
         completion: completion
       )
@@ -74,64 +48,21 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let isCentered = options["presentationStyle"] as? String == "centered"
 
     let alert = UIAlertController(
-      title: Self.text(options["title"]),
-      message: Self.text(options["message"]),
+      title: content.title,
+      message: content.message,
       preferredStyle: isCentered ? .alert : .actionSheet
     )
 
     let presentation = Presentation(
       controller: alert,
-      cancelButtonIndex: cancelButtonIndex,
+      cancelButtonIndex: content.cancelButtonIndex,
       onShow: onShow,
       completion: { index, _, _ in completion(index) }
     )
 
-    for (index, label) in labels.enumerated() {
-      let isCancel = index == cancelButtonIndex
-      let style: UIAlertAction.Style =
-        destructiveIndices.contains(index) ? .destructive : (isCancel ? .cancel : .default)
-
-      // Weak: the presentation holds the alert, which holds this handler.
-      let action = UIAlertAction(title: label, style: style) { [weak self, weak presentation] _ in
-        guard let presentation else { return }
-
-        self?.finish(presentation, index: index)
-      }
-      action.accessibilityIdentifier = Self.entry(testIDs, index)
-
-      // Precedence matches Android: destructive > cancel tint > tint > default.
-      // disabledButtonTintColor is deliberately absent: UIKit owns the
-      // appearance of a disabled action and discards titleTextColor for it.
-      let color: UIColor? =
-        style == .destructive
-        ? destructiveColor
-        : (isCancel ? (cancelButtonTintColor ?? tintColor) : tintColor)
-
-      action.isEnabled = !disabledIndices.contains(index)
-
-      if let color {
-        // UIKit exposes no public API for per-action title colors.
-        action.setValue(color, forKey: "titleTextColor")
-      }
-      alert.addAction(action)
-    }
-
     // UIKit only honors a preferred action in the alert style; the action
     // sheet already bolds its cancel button.
-    if isCentered, let preferredIndex, alert.actions.indices.contains(preferredIndex) {
-      alert.preferredAction = alert.actions[preferredIndex]
-    }
-
-    alert.view.tintColor = tintColor
-    // UIAlertAction has no public accessibilityLabel or hint, so per-button
-    // labels and hints apply to the bottom sheet only; the sheet's own id does.
-    alert.view.accessibilityIdentifier = sheetTestID
-
-    switch options["userInterfaceStyle"] as? String {
-    case "dark": alert.overrideUserInterfaceStyle = .dark
-    case "light": alert.overrideUserInterfaceStyle = .light
-    default: alert.overrideUserInterfaceStyle = .unspecified
-    }
+    addActions(to: alert, content: content, presentation: presentation, preferred: isCentered)
 
     if let popover = alert.popoverPresentationController {
       let anchorRect = Self.rect(options["anchorRect"])
@@ -169,34 +100,19 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     onShow: @escaping () -> Void,
     completion: @escaping (Int, String, String) -> Void
   ) {
-    let labels = options["options"] as? [String] ?? []
-    let cancelButtonIndex = (options["cancelButtonIndex"] as? NSNumber)?.intValue ?? -1
-    let destructiveIndices = Set(
-      (options["destructiveButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
-    )
-    let disabledIndices = Set(
-      (options["disabledButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
-    )
-    let tintColor = Self.color(options["tintColor"])
-    let cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
-    let destructiveColor = Self.color(options["destructiveColor"])
-    let preferredIndex = (options["preferredButtonIndex"] as? NSNumber)?.intValue
-    let textRequiredIndices = Set(
-      (options["textRequiredButtonIndices"] as? [NSNumber])?.map { $0.intValue } ?? []
-    )
+    let content = SheetContent(options)
     let type = options["type"] as? String ?? "plain-text"
-    let testIDs = options["testIDs"] as? [String] ?? []
 
     guard let parent = Self.presentedViewController() else {
       // Never shown, so onShow is never called.
-      completion(cancelButtonIndex, "", "")
+      completion(content.cancelButtonIndex, "", "")
 
       return
     }
 
     let alert = UIAlertController(
-      title: Self.text(options["title"]),
-      message: Self.text(options["message"]),
+      title: content.title,
+      message: content.message,
       preferredStyle: .alert
     )
 
@@ -224,7 +140,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
     let presentation = Presentation(
       controller: alert,
-      cancelButtonIndex: cancelButtonIndex,
+      cancelButtonIndex: content.cancelButtonIndex,
       // Weak, or the presentation would retain the controller it is stored on.
       currentValues: { [weak alert] in
         let fields = alert?.textFields ?? []
@@ -238,47 +154,18 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       completion: completion
     )
 
-    for (index, label) in labels.enumerated() {
-      let isCancel = index == cancelButtonIndex
-      let style: UIAlertAction.Style =
-        destructiveIndices.contains(index) ? .destructive : (isCancel ? .cancel : .default)
-
-      // Weak: the presentation holds the alert, which holds this handler.
-      let action = UIAlertAction(title: label, style: style) { [weak self, weak presentation] _ in
-        guard let presentation else { return }
-
-        self?.finish(presentation, index: index)
-      }
-      action.accessibilityIdentifier = Self.entry(testIDs, index)
-
-      let color: UIColor? =
-        style == .destructive
-        ? destructiveColor
-        : (isCancel ? (cancelButtonTintColor ?? tintColor) : tintColor)
-
-      action.isEnabled = !disabledIndices.contains(index)
-
-      if let color {
-        action.setValue(color, forKey: "titleTextColor")
-      }
-      alert.addAction(action)
-    }
-
-    alert.view.accessibilityIdentifier = Self.text(options["testID"])
-
     // Bold, and triggered by the keyboard's return key.
-    if let preferredIndex, alert.actions.indices.contains(preferredIndex) {
-      alert.preferredAction = alert.actions[preferredIndex]
-    }
+    addActions(to: alert, content: content, presentation: presentation, preferred: true)
 
     // requiresText: those buttons stay disabled while any field is empty.
-    if !textRequiredIndices.isEmpty {
+    let textRequired = content.buttons.filter { $0.requiresText }
+    if !textRequired.isEmpty {
       let update: () -> Void = { [weak alert] in
         guard let alert else { return }
 
         let filled = (alert.textFields ?? []).allSatisfy { !($0.text ?? "").isEmpty }
-        for index in textRequiredIndices where alert.actions.indices.contains(index) {
-          alert.actions[index].isEnabled = filled && !disabledIndices.contains(index)
+        for button in textRequired where alert.actions.indices.contains(button.index) {
+          alert.actions[button.index].isEnabled = filled && button.isEnabled
         }
       }
 
@@ -289,61 +176,72 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       update()
     }
 
-    alert.view.tintColor = tintColor
+    present(presentation, on: parent)
+  }
 
-    switch options["userInterfaceStyle"] as? String {
-    case "dark": alert.overrideUserInterfaceStyle = .dark
-    case "light": alert.overrideUserInterfaceStyle = .light
-    default: alert.overrideUserInterfaceStyle = .unspecified
+  /// One UIAlertAction per button, in order, so an action's index is the
+  /// button's; plus the alert's tint, appearance and id. Shared by the alert
+  /// and action sheet styles and the prompt.
+  private func addActions(
+    to alert: UIAlertController,
+    content: SheetContent,
+    presentation: Presentation,
+    preferred: Bool
+  ) {
+    for button in content.buttons {
+      let style: UIAlertAction.Style =
+        button.isDestructive ? .destructive : (button.isCancel ? .cancel : .default)
+
+      // Weak: the presentation holds the alert, which holds this handler.
+      let action = UIAlertAction(title: button.label, style: style) {
+        [weak self, weak presentation] _ in
+        guard let presentation else { return }
+
+        self?.finish(presentation, index: button.index)
+      }
+      action.accessibilityIdentifier = button.testID
+      action.isEnabled = button.isEnabled
+
+      // disabledButtonTintColor is deliberately absent: UIKit owns the
+      // appearance of a disabled action and discards titleTextColor for it.
+      if let color = content.color(for: button) {
+        // UIKit exposes no public API for per-action title colors.
+        action.setValue(color, forKey: "titleTextColor")
+      }
+      alert.addAction(action)
+
+      if preferred, button.isPreferred {
+        alert.preferredAction = action
+      }
     }
 
-    present(presentation, on: parent)
+    alert.view.tintColor = content.tintColor
+    // UIAlertAction has no public accessibilityLabel or hint, so per-button
+    // labels and hints apply to the bottom sheet only; the sheet's own id does.
+    alert.view.accessibilityIdentifier = content.testID
+    alert.overrideUserInterfaceStyle = content.userInterfaceStyle
   }
 
   private func presentBottomSheet(
     on parent: UIViewController,
-    options: NSDictionary,
-    labels: [String],
-    cancelButtonIndex: Int,
-    destructiveIndices: Set<Int>,
-    disabledIndices: Set<Int>,
-    preferredIndex: Int?,
-    testIDs: [String],
-    accessibilityLabels: [String],
-    accessibilityHints: [String],
-    sheetTestID: String?,
-    tintColor: UIColor?,
-    cancelButtonTintColor: UIColor?,
-    destructiveColor: UIColor?,
+    content: SheetContent,
+    detents requested: [String],
     onShow: @escaping () -> Void,
     completion: @escaping (Int) -> Void
   ) {
-    let rows = labels.enumerated().map { index, label in
-      BottomSheetViewController.Row(
-        index: index,
-        label: label,
-        isDestructive: destructiveIndices.contains(index),
-        isEnabled: !disabledIndices.contains(index),
-        isPreferred: index == preferredIndex,
-        testID: Self.entry(testIDs, index),
-        accessibilityLabel: Self.entry(accessibilityLabels, index),
-        accessibilityHint: Self.entry(accessibilityHints, index)
-      )
-    }
-
     let sheet = BottomSheetViewController(
-      title: Self.text(options["title"]),
-      message: Self.text(options["message"]),
-      rows: rows.filter { $0.index != cancelButtonIndex },
-      cancelRow: rows.first { $0.index == cancelButtonIndex },
-      tintColor: tintColor,
-      cancelButtonTintColor: cancelButtonTintColor,
-      destructiveColor: destructiveColor
+      title: content.title,
+      message: content.message,
+      rows: content.buttons.filter { !$0.isCancel },
+      cancelRow: content.buttons.first { $0.isCancel },
+      tintColor: content.tintColor,
+      cancelButtonTintColor: content.cancelButtonTintColor,
+      destructiveColor: content.destructiveColor
     )
 
     let presentation = Presentation(
       controller: sheet,
-      cancelButtonIndex: cancelButtonIndex,
+      cancelButtonIndex: content.cancelButtonIndex,
       onShow: onShow,
       completion: { index, _, _ in completion(index) }
     )
@@ -359,13 +257,9 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       }
     }
 
-    switch options["userInterfaceStyle"] as? String {
-    case "dark": sheet.overrideUserInterfaceStyle = .dark
-    case "light": sheet.overrideUserInterfaceStyle = .light
-    default: sheet.overrideUserInterfaceStyle = .unspecified
-    }
-    sheet.view.tintColor = tintColor
-    sheet.view.accessibilityIdentifier = sheetTestID
+    sheet.overrideUserInterfaceStyle = content.userInterfaceStyle
+    sheet.view.tintColor = content.tintColor
+    sheet.view.accessibilityIdentifier = content.testID
 
     if let controller = sheet.sheetPresentationController {
       controller.prefersGrabberVisible = true
@@ -375,7 +269,6 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
       let bounds = parent.view.window?.bounds ?? parent.view.bounds
       let fitting = sheet.fittingHeight(width: bounds.width)
-      let requested = options["detents"] as? [String] ?? []
 
       if !requested.isEmpty {
         // The caller's heights; it opens at the first. Duplicates collapse,
@@ -523,15 +416,6 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     presentation.resolve(index)
   }
 
-  /// A button's entry in one of the per-button arrays (testIDs,
-  /// accessibilityLabels, accessibilityHints), or nil for none: the wire
-  /// sends '' for a gap.
-  private static func entry(_ values: [String], _ index: Int) -> String? {
-    guard values.indices.contains(index), !values[index].isEmpty else { return nil }
-
-    return values[index]
-  }
-
   /// 'auto' fits the content (iOS 16+; half height on iOS 15), 'medium' is
   /// half height, 'large' is full height.
   private static func detent(
@@ -641,7 +525,86 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
   }
 
-  private static func text(_ value: Any?) -> String? {
+  private static func text(_ value: Any?) -> String? { SheetContent.text(value) }
+}
+
+/// One button, parsed once from the wire. Its index is its position in the
+/// buttons array, which is what the promise resolves with.
+struct SheetButton {
+  let index: Int
+  let label: String
+  /// At most one per sheet: JS keeps only the first button styled 'cancel'.
+  let isCancel: Bool
+  let isDestructive: Bool
+  let isEnabled: Bool
+  /// Bold as the default action. At most one, as with isCancel.
+  let isPreferred: Bool
+  /// The button's accessibilityIdentifier, for end-to-end tests.
+  let testID: String?
+  /// Spoken instead of the label, and after it; nil keeps UIKit's defaults.
+  let accessibilityLabel: String?
+  let accessibilityHint: String?
+  /// Prompts only: kept disabled while any field is empty.
+  let requiresText: Bool
+
+  init(index: Int, _ entry: NSDictionary) {
+    self.index = index
+    label = entry["label"] as? String ?? ""
+    isCancel = entry["style"] as? String == "cancel"
+    isDestructive = entry["style"] as? String == "destructive"
+    isEnabled = !((entry["disabled"] as? NSNumber)?.boolValue ?? false)
+    isPreferred = (entry["preferred"] as? NSNumber)?.boolValue ?? false
+    testID = SheetContent.text(entry["testID"])
+    accessibilityLabel = SheetContent.text(entry["accessibilityLabel"])
+    accessibilityHint = SheetContent.text(entry["accessibilityHint"])
+    requiresText = (entry["requiresText"] as? NSNumber)?.boolValue ?? false
+  }
+}
+
+/// What every style shares, sheets and prompts alike: the header, the buttons
+/// and how they look.
+struct SheetContent {
+  let title: String?
+  let message: String?
+  let buttons: [SheetButton]
+  let tintColor: UIColor?
+  let cancelButtonTintColor: UIColor?
+  let destructiveColor: UIColor?
+  let userInterfaceStyle: UIUserInterfaceStyle
+  /// The sheet's own accessibilityIdentifier, for end-to-end tests.
+  let testID: String?
+
+  init(_ options: NSDictionary) {
+    title = Self.text(options["title"])
+    message = Self.text(options["message"])
+    buttons = (options["buttons"] as? [NSDictionary] ?? []).enumerated().map {
+      SheetButton(index: $0.offset, $0.element)
+    }
+    tintColor = Self.color(options["tintColor"])
+    cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
+    destructiveColor = Self.color(options["destructiveColor"])
+    switch options["userInterfaceStyle"] as? String {
+    case "dark": userInterfaceStyle = .dark
+    case "light": userInterfaceStyle = .light
+    default: userInterfaceStyle = .unspecified
+    }
+    testID = Self.text(options["testID"])
+  }
+
+  /// What a backdrop tap or swipe resolves with: the cancel button's index, or
+  /// -1 without one, like Android.
+  var cancelButtonIndex: Int {
+    buttons.first { $0.isCancel }?.index ?? -1
+  }
+
+  /// Precedence matches Android: destructive > cancel tint > tint > default.
+  func color(for button: SheetButton) -> UIColor? {
+    if button.isDestructive { return destructiveColor }
+
+    return button.isCancel ? (cancelButtonTintColor ?? tintColor) : tintColor
+  }
+
+  static func text(_ value: Any?) -> String? {
     guard let string = value as? String, !string.isEmpty else { return nil }
 
     return string
@@ -649,7 +612,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
 
   /// Colors cross the bridge as React Native's processColor output: an ARGB
   /// number, unsigned on iOS. Truncated to 32 bits, so a signed one works too.
-  private static func color(_ value: Any?) -> UIColor? {
+  static func color(_ value: Any?) -> UIColor? {
     guard let number = value as? NSNumber else { return nil }
 
     let argb = UInt32(truncatingIfNeeded: number.int64Value)

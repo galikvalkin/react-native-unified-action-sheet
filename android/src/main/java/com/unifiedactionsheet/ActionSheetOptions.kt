@@ -73,99 +73,117 @@ internal enum class ForcedAppearance {
   }
 }
 
-internal data class ActionSheetOptions(
-  val options: List<String>,
-  val cancelButtonIndex: Int?,
-  val destructiveButtonIndices: Set<Int>,
-  val title: String?,
-  val message: String?,
-  val tintColor: Int?,
-  val cancelButtonTintColor: Int?,
-  val destructiveColor: Int?,
-  val buttonTextAlignment: ButtonTextAlignment,
-  val disabledButtonIndices: Set<Int>,
-  val userInterfaceStyle: ForcedAppearance,
-  val presentationStyle: PresentationStyle,
-  val anchorRect: Rect?,
-  val anchorAlignment: AnchorAlignment,
-  /// Bold, as the default action. Only the first preferred button counts.
-  val preferredButtonIndex: Int? = null,
-  /// 'bottom' only, in the caller's order: the sheet opens at the first.
-  val detents: List<Detent> = emptyList(),
-  /// Aligned with options; null where a button has none.
-  val testIDs: List<String?> = emptyList(),
-  /// Same alignment: spoken instead of the label, and after it.
-  val accessibilityLabels: List<String?> = emptyList(),
-  val accessibilityHints: List<String?> = emptyList(),
-  /// The sheet's own id for end-to-end tests, on its dialog content.
+/// One button, in display order. Its position in SheetContent.buttons is the
+/// index the promise resolves with.
+internal data class SheetButton(
+  val label: String,
+  /// At most one per sheet: JS keeps only the first button styled 'cancel'.
+  val isCancel: Boolean = false,
+  val isDestructive: Boolean = false,
+  val isDisabled: Boolean = false,
+  /// Bold, as the default action. At most one, as with isCancel.
+  val isPreferred: Boolean = false,
+  /// For end-to-end tests: the row's tag and accessibility resource id.
   val testID: String? = null,
+  /// Spoken instead of the label, and after it.
+  val accessibilityLabel: String? = null,
+  val accessibilityHint: String? = null,
+  /// Prompts only: kept disabled while any field is empty.
+  val requiresText: Boolean = false,
 ) {
+  companion object {
+    fun fromReadableMap(map: ReadableMap) = SheetButton(
+      label = map.optString("label").orEmpty(),
+      isCancel = map.optString("style") == "cancel",
+      isDestructive = map.optString("style") == "destructive",
+      isDisabled = map.optBoolean("disabled"),
+      isPreferred = map.optBoolean("preferred"),
+      testID = map.optString("testID")?.takeIf { it.isNotEmpty() },
+      accessibilityLabel = map.optString("accessibilityLabel")?.takeIf { it.isNotEmpty() },
+      accessibilityHint = map.optString("accessibilityHint")?.takeIf { it.isNotEmpty() },
+      requiresText = map.optBoolean("requiresText"),
+    )
+  }
+}
+
+/// What a sheet and a prompt have in common: the header, the buttons and how
+/// they look. buildContent draws from this alone, so the two cannot drift.
+internal interface SheetContent {
+  val title: String?
+  val message: String?
+  val buttons: List<SheetButton>
+  val tintColor: Int?
+  val cancelButtonTintColor: Int?
+  val destructiveColor: Int?
+  val buttonTextAlignment: ButtonTextAlignment
+  val userInterfaceStyle: ForcedAppearance
+  /// The sheet's own id for end-to-end tests, on its dialog content.
+  val testID: String?
+
+  /// The cancel button's index, or null without one: what a backdrop tap or
+  /// back resolves with.
+  val cancelButtonIndex: Int?
+    get() = buttons.indexOfFirst { it.isCancel }.takeIf { it >= 0 }
+
   /// For TalkBack: names the dialog window when it opens. The dialogs draw
   /// their own header, so this sets no visible title bar.
   val windowTitle: String?
     get() = title?.takeIf { it.isNotBlank() } ?: message?.takeIf { it.isNotBlank() }
+}
 
+internal data class SheetContentOptions(
+  override val title: String? = null,
+  override val message: String? = null,
+  override val buttons: List<SheetButton> = emptyList(),
+  override val tintColor: Int? = null,
+  override val cancelButtonTintColor: Int? = null,
+  override val destructiveColor: Int? = null,
+  override val buttonTextAlignment: ButtonTextAlignment = ButtonTextAlignment.START,
+  override val userInterfaceStyle: ForcedAppearance = ForcedAppearance.SYSTEM,
+  override val testID: String? = null,
+) : SheetContent {
+  companion object {
+    fun fromReadableMap(map: ReadableMap): SheetContentOptions {
+      val buttons = mutableListOf<SheetButton>()
+      map.getArray("buttons")?.let { array ->
+        for (index in 0 until array.size()) {
+          array.getMap(index)?.let { buttons.add(SheetButton.fromReadableMap(it)) }
+        }
+      }
+
+      return SheetContentOptions(
+        title = map.optString("title"),
+        message = map.optString("message"),
+        buttons = buttons,
+        tintColor = map.optColor("tintColor"),
+        cancelButtonTintColor = map.optColor("cancelButtonTintColor"),
+        destructiveColor = map.optColor("destructiveColor"),
+        buttonTextAlignment = ButtonTextAlignment.fromWire(map.optString("buttonTextAlignment")),
+        userInterfaceStyle = ForcedAppearance.fromWire(map.optString("userInterfaceStyle")),
+        testID = map.optString("testID")?.takeIf { it.isNotEmpty() },
+      )
+    }
+  }
+}
+
+internal data class ActionSheetOptions(
+  val content: SheetContentOptions,
+  val presentationStyle: PresentationStyle = PresentationStyle.CENTERED,
+  val anchorRect: Rect? = null,
+  val anchorAlignment: AnchorAlignment = AnchorAlignment.START,
+  /// 'bottom' only, in the caller's order: the sheet opens at the first.
+  val detents: List<Detent> = emptyList(),
+) : SheetContent by content {
   companion object {
     /// density converts the anchor rect: measureInWindow reports dp, while
     /// View coordinates are px.
-    fun fromReadableMap(map: ReadableMap, density: Float): ActionSheetOptions {
-      val labels = mutableListOf<String>()
-      map.getArray("options")?.let { array ->
-        for (index in 0 until array.size()) {
-          array.getString(index)?.let(labels::add)
-        }
-      }
-
-      val disabledIndices = mutableSetOf<Int>()
-      map.getArray("disabledButtonIndices")?.let { array ->
-        for (index in 0 until array.size()) {
-          disabledIndices.add(array.getInt(index))
-        }
-      }
-
-      val destructiveIndices = mutableSetOf<Int>()
-      map.getArray("destructiveButtonIndices")?.let { array ->
-        for (index in 0 until array.size()) {
-          destructiveIndices.add(array.getInt(index))
-        }
-      }
-
-      return ActionSheetOptions(
-        options = labels,
-        cancelButtonIndex = optInt(map, "cancelButtonIndex"),
-        destructiveButtonIndices = destructiveIndices,
-        title = optString(map, "title"),
-        message = optString(map, "message"),
-        tintColor = optColor(map, "tintColor"),
-        cancelButtonTintColor = optColor(map, "cancelButtonTintColor"),
-        destructiveColor = optColor(map, "destructiveColor"),
-        buttonTextAlignment = ButtonTextAlignment.fromWire(optString(map, "buttonTextAlignment")),
-        disabledButtonIndices = disabledIndices,
-        userInterfaceStyle = ForcedAppearance.fromWire(optString(map, "userInterfaceStyle")),
-        presentationStyle = PresentationStyle.fromWire(optString(map, "presentationStyle")),
-        anchorRect = optRect(map, "anchorRect", density),
-        anchorAlignment = AnchorAlignment.fromWire(optString(map, "anchorAlignment")),
-        preferredButtonIndex = optInt(map, "preferredButtonIndex"),
-        detents = optDetents(map),
-        testIDs = optAligned(map, "testIDs"),
-        accessibilityLabels = optAligned(map, "accessibilityLabels"),
-        accessibilityHints = optAligned(map, "accessibilityHints"),
-        testID = optString(map, "testID")?.takeIf { it.isNotEmpty() },
-      )
-    }
-
-    /// A per-button array (testIDs, accessibilityLabels, accessibilityHints).
-    /// The wire sends '' for a button without a value.
-    fun optAligned(map: ReadableMap, key: String): List<String?> {
-      val values = mutableListOf<String?>()
-      map.getArray(key)?.let { array ->
-        for (index in 0 until array.size()) {
-          values.add(array.getString(index)?.takeIf { it.isNotEmpty() })
-        }
-      }
-
-      return values
-    }
+    fun fromReadableMap(map: ReadableMap, density: Float) = ActionSheetOptions(
+      content = SheetContentOptions.fromReadableMap(map),
+      presentationStyle = PresentationStyle.fromWire(map.optString("presentationStyle")),
+      anchorRect = optRect(map, "anchorRect", density),
+      anchorAlignment = AnchorAlignment.fromWire(map.optString("anchorAlignment")),
+      detents = optDetents(map),
+    )
 
     private fun optDetents(map: ReadableMap): List<Detent> {
       val detents = mutableListOf<Detent>()
@@ -192,16 +210,16 @@ internal data class ActionSheetOptions(
         (y + rect.getDouble("height") * density).toInt(),
       )
     }
-
-    private fun optInt(map: ReadableMap, key: String): Int? =
-      if (map.hasKey(key) && !map.isNull(key)) map.getInt(key) else null
-
-    /// A color processed by React Native's processColor: an ARGB number. Read
-    /// as a double and truncated to 32 bits, so an unsigned value works too.
-    private fun optColor(map: ReadableMap, key: String): Int? =
-      if (map.hasKey(key) && !map.isNull(key)) map.getDouble(key).toLong().toInt() else null
-
-    private fun optString(map: ReadableMap, key: String): String? =
-      if (map.hasKey(key) && !map.isNull(key)) map.getString(key) else null
   }
 }
+
+internal fun ReadableMap.optString(key: String): String? =
+  if (hasKey(key) && !isNull(key)) getString(key) else null
+
+internal fun ReadableMap.optBoolean(key: String): Boolean =
+  hasKey(key) && !isNull(key) && getBoolean(key)
+
+/// A color processed by React Native's processColor: an ARGB number. Read as a
+/// double and truncated to 32 bits, so an unsigned value works too.
+internal fun ReadableMap.optColor(key: String): Int? =
+  if (hasKey(key) && !isNull(key)) getDouble(key).toLong().toInt() else null

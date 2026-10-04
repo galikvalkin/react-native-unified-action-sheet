@@ -5,19 +5,8 @@ import UIKit
 /// like the rest of iOS rather than like the Android sheet: system fonts, the
 /// label color (or tintColor), system red for destructive rows.
 final class BottomSheetViewController: UIViewController {
-  struct Row {
-    let index: Int
-    let label: String
-    let isDestructive: Bool
-    let isEnabled: Bool
-    /// Semibold, like the preferred action of an alert.
-    let isPreferred: Bool
-    /// The button's accessibilityIdentifier, for end-to-end tests.
-    let testID: String?
-    /// Spoken instead of the label, and after it; nil keeps UIKit's defaults.
-    let accessibilityLabel: String?
-    let accessibilityHint: String?
-  }
+  /// The rows are the sheet's buttons, cancel included; see SheetButton.
+  typealias Row = SheetButton
 
   private let sheetTitle: String?
   private let message: String?

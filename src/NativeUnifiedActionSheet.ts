@@ -1,5 +1,8 @@
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
 
+/// Buttons cross as one array of objects, in display order. style is 'cancel'
+/// (at most one), 'destructive' or absent; at most one is preferred;
+/// requiresText is for prompts. Results come back as an index into it.
 export interface Spec extends TurboModule {
   getConstants(): {
     /// Android: whether the app opted into Material (presentationStyle
@@ -8,24 +11,26 @@ export interface Spec extends TurboModule {
   };
   showActionSheetWithOptions(
     options: {
-      options: string[];
-      cancelButtonIndex?: number;
-      destructiveButtonIndices?: number[];
+      buttons: {
+        label: string;
+        style?: string;
+        disabled?: boolean;
+        preferred?: boolean;
+        testID?: string;
+        accessibilityLabel?: string;
+        accessibilityHint?: string;
+        requiresText?: boolean;
+      }[];
       title?: string;
       message?: string;
       tintColor?: number;
       cancelButtonTintColor?: number;
       destructiveColor?: number;
       buttonTextAlignment?: string;
-      disabledButtonIndices?: number[];
       userInterfaceStyle?: string;
       presentationStyle?: string;
       anchorAlignment?: string;
-      preferredButtonIndex?: number;
       detents?: string[];
-      testIDs?: string[];
-      accessibilityLabels?: string[];
-      accessibilityHints?: string[];
       testID?: string;
       anchorRect?: {
         x: number;
@@ -38,17 +43,18 @@ export interface Spec extends TurboModule {
   ): Promise<number>;
   showPromptWithOptions(
     options: {
-      options: string[];
-      cancelButtonIndex?: number;
-      destructiveButtonIndices?: number[];
-      disabledButtonIndices?: number[];
+      buttons: {
+        label: string;
+        style?: string;
+        disabled?: boolean;
+        preferred?: boolean;
+        testID?: string;
+        accessibilityLabel?: string;
+        accessibilityHint?: string;
+        requiresText?: boolean;
+      }[];
       title?: string;
       message?: string;
-      preferredButtonIndex?: number;
-      textRequiredButtonIndices?: number[];
-      testIDs?: string[];
-      accessibilityLabels?: string[];
-      accessibilityHints?: string[];
       testID?: string;
       fieldTestID?: string;
       passwordFieldTestID?: string;
