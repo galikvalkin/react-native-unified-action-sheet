@@ -1,7 +1,6 @@
 package com.unifiedactionsheet
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
 import android.util.TypedValue
@@ -94,8 +93,8 @@ internal fun buildContent(
 
   val centerLabels = options.buttonTextAlignment == ButtonTextAlignment.CENTER
 
-  val optionColor = parseColor(options.tintColor) ?: palette.primaryText
-  val cancelColor = parseColor(options.cancelButtonTintColor) ?: optionColor
+  val optionColor = options.tintColor ?: palette.primaryText
+  val cancelColor = options.cancelButtonTintColor ?: optionColor
   // Disabled rows drop their role color for a neutral dim, matching iOS, where
   // UIKit owns the appearance of a disabled action.
   val disabledColor = ColorUtils.setAlphaComponent(palette.primaryText, DISABLED_TEXT_ALPHA)
@@ -115,7 +114,7 @@ internal fun buildContent(
         accessibilityLabel = options.accessibilityLabels.getOrNull(index),
         accessibilityHint = options.accessibilityHints.getOrNull(index),
         label = label,
-        color = if (isDestructive) parseColor(options.destructiveColor) ?: palette.error else optionColor,
+        color = if (isDestructive) options.destructiveColor ?: palette.error else optionColor,
         centered = centerLabels,
         enabled = index !in options.disabledButtonIndices,
         bold = index == options.preferredButtonIndex,
@@ -289,8 +288,4 @@ private fun buildSpacer(context: Context): View = View(context).apply {
     LinearLayout.LayoutParams.MATCH_PARENT,
     dp(context, 8),
   )
-}
-
-private fun parseColor(value: String?): Int? = value?.let {
-  runCatching { Color.parseColor(it) }.getOrNull()
 }

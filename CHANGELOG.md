@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Changed
+
+- Colors (`tintColor`, `cancelButtonTintColor`, `destructiveColor`) are parsed
+  by React Native's `processColor`, so they accept exactly what a `style`
+  does, the same on both platforms. An 8-digit hex is now `#RRGGBBAA`, as
+  everywhere else in React Native; it used to be read as `#AARRGGBB`. If you
+  passed an 8-digit hex with alpha, move the alpha to the end.
 
 - `onShow` on sheets and prompts: called once the sheet is on screen (iOS:
   after its presentation animation; Android: when its window is shown), at
@@ -26,6 +32,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `UIAlertAction` has no public API for either.
 
 ### Fixed
+
+- Colors: `'#RGB'` was ignored on Android, and named colors (`'green'`) and
+  `rgb()`/`hsl()` were ignored on iOS. They now work on both.
+- An `'anchored'` sheet whose anchor had unmounted never opened and its
+  promise never settled. It now opens unanchored after 500 ms.
+- iOS: a sheet or prompt shown while another view controller was being
+  dismissed or presented (e.g. right after closing a React Native `Modal`)
+  silently failed to appear and its promise never settled. It now waits for
+  that transition to finish, and resolves as cancelled if UIKit still refuses
+  to present it.
+- Android: showing a sheet or prompt while the activity was finishing leaked
+  its window (`WindowLeaked`) or could crash with `BadTokenException`. It now
+  resolves as dismissed without showing anything; open dialogs are also closed
+  as soon as the activity is destroyed.
 
 - Android: sheet and prompt dialog windows had no title for accessibility
   services to announce when they opened. Each window is now named after the

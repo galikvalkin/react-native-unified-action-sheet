@@ -35,6 +35,10 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       )
 
     UiThreadUtil.runOnUiThread {
+      // The activity can start finishing between this call and the UI thread
+      // getting to it, e.g. on back or a navigation reset. A dialog shown then
+      // leaks its window or crashes with BadTokenException, so skip it.
+      if (activity.isClosing()) return@runOnUiThread promise.resolve(DISMISSED_BY_API)
       presentSheet(activity, parsed, onShow, promise)
     }
   }
@@ -48,6 +52,16 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       )
 
     UiThreadUtil.runOnUiThread {
+      // As in showActionSheetWithOptions.
+      if (activity.isClosing()) {
+        return@runOnUiThread promise.resolve(
+          Arguments.createMap().apply {
+            putInt("buttonIndex", DISMISSED_BY_API)
+            putString("text", parsed.defaultValue ?: "")
+            putString("password", "")
+          },
+        )
+      }
       presentPrompt(activity, parsed, onShow, promise)
     }
   }
@@ -78,7 +92,13 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
   override fun onHostPause() = Unit
 
   override fun onHostDestroy() {
-    UiThreadUtil.runOnUiThread { dismissAllOpenDialogs() }
+    // Called on the UI thread: dismiss right away, while the activity's window
+    // still exists, rather than after it is gone.
+    if (UiThreadUtil.isOnUiThread()) {
+      dismissAllOpenDialogs()
+    } else {
+      UiThreadUtil.runOnUiThread { dismissAllOpenDialogs() }
+    }
   }
 
   override fun invalidate() {
@@ -184,6 +204,8 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
 
     dialog.show()
   }
+
+  private fun Activity.isClosing(): Boolean = isFinishing || isDestroyed
 
   /// onShow: once the dialog's window is shown. A React Native Callback throws
   /// if invoked twice, hence the guard. A dialog that is never shown (the

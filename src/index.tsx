@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, processColor } from 'react-native';
 
 import type { Spec } from './NativeUnifiedActionSheet';
 import type {
@@ -59,13 +59,44 @@ type WireButtons = {
   accessibilityHints?: string[];
 };
 
+/// Colors cross as React Native's processed ARGB numbers, not strings.
+type WireColors = {
+  tintColor?: number;
+  cancelButtonTintColor?: number;
+  destructiveColor?: number;
+};
+
+type ColorKey = keyof WireColors;
+
 type WireOptions = Omit<
   ActionSheetOptionsInterface,
-  'options' | 'anchor' | 'onShow'
+  'options' | 'anchor' | 'onShow' | ColorKey
 > &
-  WireButtons & {
+  WireButtons &
+  WireColors & {
     anchorRect?: { x: number; y: number; width: number; height: number };
   };
+
+/// Parses colors the way React Native does everywhere else, so '#RRGGBBAA',
+/// '#RGB', 'rgba(...)' and named colors mean the same on both platforms.
+/// processColor yields an ARGB number; anything it can't parse is dropped.
+const toWireColors = (colors: {
+  tintColor?: string;
+  cancelButtonTintColor?: string;
+  destructiveColor?: string;
+}): WireColors => {
+  const wire: WireColors = {};
+  for (const key of [
+    'tintColor',
+    'cancelButtonTintColor',
+    'destructiveColor',
+  ] as const) {
+    const processed = colors[key] == null ? null : processColor(colors[key]);
+    if (typeof processed === 'number') wire[key] = processed;
+  }
+
+  return wire;
+};
 
 const nativeModule = (): Spec =>
   require('./NativeUnifiedActionSheet').default as Spec;
@@ -79,17 +110,22 @@ const toWireOptions = ({
   anchor: _anchor,
   // A function: it travels as the native method's callback argument instead.
   onShow: _onShow,
+  tintColor,
+  cancelButtonTintColor,
+  destructiveColor,
   ...rest
 }: ActionSheetOptionsInterface): WireOptions => ({
   ...rest,
   ...toWireButtons(options),
+  ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
 });
 
 type WirePromptOptions = Omit<
   PromptOptionsInterface,
-  'options' | 'secureTextEntry' | 'onShow'
+  'options' | 'secureTextEntry' | 'onShow' | ColorKey
 > &
-  WireButtons & {
+  WireButtons &
+  WireColors & {
     type: NonNullable<PromptOptionsInterface['type']>;
     textRequiredButtonIndices?: number[];
   };
@@ -199,6 +235,10 @@ const warnIfBottomUnavailable = (
   );
 };
 
+/// How long to wait for an anchor's measurement before presenting without it.
+/// A mounted view answers within a frame; one that has unmounted may never.
+const ANCHOR_TIMEOUT_MS = 500;
+
 /// The anchor is measured in JS and sent across as a rect, so neither native
 /// module has to resolve a view: a ref's own measureInWindow is the supported
 /// way to do this on both architectures, unlike a react tag.
@@ -212,10 +252,21 @@ const withAnchorRect = (
   if (!target) return Promise.resolve(wire);
 
   return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value: WireOptions) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    // A view that unmounted may never answer: present unanchored instead of
+    // hanging, and ignore a measurement that arrives afterwards.
+    const timer = setTimeout(() => settle(wire), ANCHOR_TIMEOUT_MS);
+
     target.measureInWindow((x, y, width, height) => {
       const measured = typeof x === 'number' && typeof y === 'number';
 
-      resolve(
+      settle(
         measured ? { ...wire, anchorRect: { x, y, width, height } } : wire
       );
     });
@@ -283,6 +334,9 @@ export const showPromptWithOptions = (
     type,
     // A function: it travels as the native method's callback argument.
     onShow,
+    tintColor,
+    cancelButtonTintColor,
+    destructiveColor,
     ...rest
   } = options;
   const textRequired = buttons.flatMap(
@@ -292,6 +346,7 @@ export const showPromptWithOptions = (
   const wire: WirePromptOptions = {
     ...rest,
     ...toWireButtons(buttons),
+    ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
     // One field of truth for the native sides: the old boolean maps onto type.
     type: type ?? (secureTextEntry ? 'secure-text' : 'plain-text'),
     ...(textRequired.length === 0

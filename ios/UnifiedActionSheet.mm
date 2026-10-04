@@ -63,10 +63,16 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
 
   payload[@"title"] = options.title();
   payload[@"message"] = options.message();
-  payload[@"tintColor"] = options.tintColor();
-  payload[@"cancelButtonTintColor"] = options.cancelButtonTintColor();
+  if (options.tintColor()) {
+    payload[@"tintColor"] = @(*options.tintColor());
+  }
+  if (options.cancelButtonTintColor()) {
+    payload[@"cancelButtonTintColor"] = @(*options.cancelButtonTintColor());
+  }
   payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
-  payload[@"destructiveColor"] = options.destructiveColor();
+  if (options.destructiveColor()) {
+    payload[@"destructiveColor"] = @(*options.destructiveColor());
+  }
   payload[@"presentationStyle"] = options.presentationStyle();
 
   if (options.preferredButtonIndex()) {
@@ -178,9 +184,15 @@ RCT_EXPORT_METHOD(showPromptWithOptions
   payload[@"passwordFieldTestID"] = options.passwordFieldTestID();
   payload[@"defaultValue"] = options.defaultValue();
   payload[@"keyboardType"] = options.keyboardType();
-  payload[@"tintColor"] = options.tintColor();
-  payload[@"cancelButtonTintColor"] = options.cancelButtonTintColor();
-  payload[@"destructiveColor"] = options.destructiveColor();
+  if (options.tintColor()) {
+    payload[@"tintColor"] = @(*options.tintColor());
+  }
+  if (options.cancelButtonTintColor()) {
+    payload[@"cancelButtonTintColor"] = @(*options.cancelButtonTintColor());
+  }
+  if (options.destructiveColor()) {
+    payload[@"destructiveColor"] = @(*options.destructiveColor());
+  }
   payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
 
   dispatch_async(dispatch_get_main_queue(), ^{

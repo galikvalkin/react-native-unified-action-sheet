@@ -10,8 +10,19 @@ let mockPromptResponse: Promise<{
 }>;
 let mockMaterialEnabled: boolean;
 
+// processColor stands in for React Native's: ARGB numbers for the formats it
+// knows, null for anything it can't parse.
+const mockColors: Record<string, number> = {
+  '#FF000080': 0x80ff0000,
+  '#F00': 0xffff0000,
+  'green': 0xff008000,
+  '#123456': 0xff123456,
+};
+
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios' },
+  processColor: (color: unknown) =>
+    typeof color === 'string' ? (mockColors[color] ?? null) : null,
 }));
 
 jest.mock('../NativeUnifiedActionSheet', () => {
@@ -145,7 +156,7 @@ describe('Android', () => {
       options: buttons('A'),
       title: 'T',
       message: 'M',
-      tintColor: '#111111',
+      tintColor: '#123456',
       presentationStyle: 'anchored',
       anchorAlignment: 'center',
       buttonTextAlignment: 'center',
@@ -155,7 +166,7 @@ describe('Android', () => {
     expect(passed).toMatchObject({
       title: 'T',
       message: 'M',
-      tintColor: '#111111',
+      tintColor: 0xff123456,
       presentationStyle: 'anchored',
       anchorAlignment: 'center',
       buttonTextAlignment: 'center',
@@ -866,5 +877,103 @@ describe('sheet and field testIDs', () => {
       fieldTestID: 'sign-in-email',
       passwordFieldTestID: 'sign-in-password',
     });
+  });
+});
+
+describe('anchor measurement', () => {
+  it('opens unanchored when measureInWindow never answers', async () => {
+    jest.useFakeTimers();
+    try {
+      const { showActionSheetWithOptions } = loadIndex('android');
+      const silentAnchor = { measureInWindow: jest.fn() };
+
+      const result = showActionSheetWithOptions({
+        options: buttons('A'),
+        presentationStyle: 'anchored',
+        anchor: silentAnchor,
+      });
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(silentAnchor.measureInWindow).toHaveBeenCalledTimes(1);
+      expect(mockedNative().showActionSheetWithOptions).toHaveBeenCalledTimes(
+        1
+      );
+      const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
+      expect(passed).not.toHaveProperty('anchorRect');
+      await expect(result).resolves.toMatchObject({ reason: 'selected' });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('ignores a measurement that answers after the timeout', async () => {
+    jest.useFakeTimers();
+    try {
+      const { showActionSheetWithOptions } = loadIndex('ios');
+      let answer:
+        ((x: number, y: number, w: number, h: number) => void) | undefined;
+      const lateAnchor = {
+        measureInWindow: jest.fn((cb: typeof answer) => {
+          answer = cb;
+        }),
+      };
+
+      const result = showActionSheetWithOptions({
+        options: buttons('A'),
+        anchor: lateAnchor,
+      });
+      await jest.advanceTimersByTimeAsync(1000);
+      answer?.(1, 2, 3, 4);
+      await result;
+
+      expect(mockedNative().showActionSheetWithOptions).toHaveBeenCalledTimes(
+        1
+      );
+      const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
+      expect(passed).not.toHaveProperty('anchorRect');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('colors', () => {
+  it('sends colors as numbers, parsed the way React Native does', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('android');
+    const colors = {
+      tintColor: '#FF000080',
+      cancelButtonTintColor: '#F00',
+      destructiveColor: 'green',
+    };
+
+    await showActionSheetWithOptions({ options: buttons('A'), ...colors });
+    await showPromptWithOptions({ options: buttons('OK'), ...colors });
+
+    const expected = {
+      tintColor: 0x80ff0000,
+      cancelButtonTintColor: 0xffff0000,
+      destructiveColor: 0xff008000,
+    };
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject(expected);
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject(expected);
+  });
+
+  it('drops a color React Native cannot parse', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      tintColor: 'not-a-color',
+      destructiveColor: '#123456',
+    });
+
+    const [passed] = mockedNative().showActionSheetWithOptions.mock.calls[0]!;
+    expect(passed).not.toHaveProperty('tintColor');
+    expect(passed).toMatchObject({ destructiveColor: 0xff123456 });
   });
 });

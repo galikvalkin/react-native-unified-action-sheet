@@ -158,8 +158,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     // set one on a UIAlertController's own presentationController.
     alert.popoverPresentationController?.delegate = self
 
-    presentations.append(presentation)
-    parent.present(alert, animated: true) { [weak presentation] in presentation?.shown() }
+    present(presentation, on: parent)
   }
 
   /// React Native's Alert.prompt is iOS-only; this is the shared half of the
@@ -298,8 +297,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     default: alert.overrideUserInterfaceStyle = .unspecified
     }
 
-    presentations.append(presentation)
-    parent.present(alert, animated: true) { [weak presentation] in presentation?.shown() }
+    present(presentation, on: parent)
   }
 
   private func presentBottomSheet(
@@ -403,8 +401,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       }
     }
 
-    presentations.append(presentation)
-    parent.present(sheet, animated: true) { [weak presentation] in presentation?.shown() }
+    present(presentation, on: parent)
   }
 
   /// Interactive dismissal of a sheet: a swipe down or a tap on the dimmed
@@ -460,6 +457,12 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
   @objc public func dismiss() {
     guard let presentation = presentations.last else { return }
 
+    // Still waiting for a transition to end, so not on screen: nothing to
+    // dismiss, and UIKit would not call the completion below.
+    guard presentation.controller.presentingViewController != nil else {
+      return finish(presentation, index: Self.dismissedByApi)
+    }
+
     presentation.controller.dismiss(animated: true) { [weak self] in
       self?.finish(presentation, index: Self.dismissedByApi)
     }
@@ -474,6 +477,42 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     guard let presentation = presentations.first(where: { $0.controller === alert })
     else { return }
 
+    finish(presentation, index: presentation.cancelButtonIndex)
+  }
+
+  /// Presents once parent can take it. UIKit refuses to present while a
+  /// presentation or dismissal is running (a React Native Modal closing, say),
+  /// and only logs when it does, which would leave the promise pending. So wait
+  /// for that transition to end, and resolve as cancelled if UIKit still
+  /// refuses. The presentation is registered first, so dismissActionSheet()
+  /// and a reload can still reach it while it waits.
+  private func present(_ presentation: Presentation, on parent: UIViewController) {
+    if !presentations.contains(where: { $0 === presentation }) {
+      presentations.append(presentation)
+    }
+
+    let busy = parent.presentedViewController ?? parent
+    if let coordinator = busy.transitionCoordinator {
+      coordinator.animate(alongsideTransition: nil) { [weak self, weak presentation, weak parent] _ in
+        // After the transition's own completion has run.
+        DispatchQueue.main.async {
+          guard let self, let presentation, let parent,
+            self.presentations.contains(where: { $0 === presentation })
+          else { return }
+
+          self.present(presentation, on: parent)
+        }
+      }
+
+      return
+    }
+
+    let controller = presentation.controller
+    parent.present(controller, animated: true) { [weak presentation] in presentation?.shown() }
+
+    guard controller.presentingViewController == nil else { return }
+
+    // Refused. Never shown, so onShow is never called.
     finish(presentation, index: presentation.cancelButtonIndex)
   }
 
@@ -569,8 +608,10 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       .flatMap { $0.windows }
       .first { $0.isKeyWindow }
 
+    // A controller on its way out is no place to present from: stop at the
+    // one it leaves behind. present(_:on:) waits for it to finish leaving.
     var controller = window?.rootViewController
-    while let presented = controller?.presentedViewController {
+    while let presented = controller?.presentedViewController, !presented.isBeingDismissed {
       controller = presented
     }
 
@@ -606,26 +647,16 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     return string
   }
 
-  /// Colors cross the bridge as hex strings, matching the Android side.
+  /// Colors cross the bridge as React Native's processColor output: an ARGB
+  /// number, unsigned on iOS. Truncated to 32 bits, so a signed one works too.
   private static func color(_ value: Any?) -> UIColor? {
-    guard var hex = value as? String else { return nil }
+    guard let number = value as? NSNumber else { return nil }
 
-    hex = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-    if hex.hasPrefix("#") { hex.removeFirst() }
-
-    if hex.count == 3 {
-      hex = hex.map { "\($0)\($0)" }.joined()
-    }
-
-    guard hex.count == 6 || hex.count == 8, let value = UInt64(hex, radix: 16) else {
-      return nil
-    }
-
-    let hasAlpha = hex.count == 8
-    let alpha = hasAlpha ? CGFloat((value >> 24) & 0xFF) / 255 : 1
-    let red = CGFloat((value >> 16) & 0xFF) / 255
-    let green = CGFloat((value >> 8) & 0xFF) / 255
-    let blue = CGFloat(value & 0xFF) / 255
+    let argb = UInt32(truncatingIfNeeded: number.int64Value)
+    let alpha = CGFloat((argb >> 24) & 0xFF) / 255
+    let red = CGFloat((argb >> 16) & 0xFF) / 255
+    let green = CGFloat((argb >> 8) & 0xFF) / 255
+    let blue = CGFloat(argb & 0xFF) / 255
 
     return UIColor(red: red, green: green, blue: blue, alpha: alpha)
   }
