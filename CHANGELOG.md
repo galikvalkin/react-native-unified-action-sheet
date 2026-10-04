@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Added
 
-- Colors (`tintColor`, `cancelButtonTintColor`, `destructiveColor`) are parsed
-  by React Native's `processColor`, so they accept exactly what a `style`
-  does, the same on both platforms. An 8-digit hex is now `#RRGGBBAA`, as
-  everywhere else in React Native; it used to be read as `#AARRGGBB`. If you
-  passed an 8-digit hex with alpha, move the alpha to the end.
-
+- `value` on buttons: the result carries the value of the button that closed
+  the sheet or prompt, typed from the buttons with no annotations (`value:
+  'share'` makes `result.value` `'share' | …`). Branch on what was picked
+  instead of its index. Values stay in JS. The option and result types take
+  the value type as an optional parameter, and the Jest mock resolves values
+  too.
 - `onShow` on sheets and prompts: called once the sheet is on screen (iOS:
   after its presentation animation; Android: when its window is shown), at
   most once and before the promise resolves. Not called if the sheet never
@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and after the label. They apply to the iOS bottom sheet and every Android
   style; iOS alerts, action sheets and prompts ignore them, since
   `UIAlertAction` has no public API for either.
+
+### Changed
+
+- Colors (`tintColor`, `cancelButtonTintColor`, `destructiveColor`) are parsed
+  by React Native's `processColor`, so they accept exactly what a `style`
+  does, the same on both platforms. An 8-digit hex is now `#RRGGBBAA`, as
+  everywhere else in React Native; it used to be read as `#AARRGGBB`. If you
+  passed an 8-digit hex with alpha, move the alpha to the end.
 
 ### Fixed
 

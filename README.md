@@ -41,7 +41,7 @@ await showActionSheetWithOptions({
 });
 ```
 
-The call resolves `{ reason, buttonIndex }`, and the tapped button's `onPress` runs. `reason` is `'selected'`, `'cancelled'` (the cancel button, a backdrop tap, back or a swipe) or `'dismissed'` (closed from code). The promise never rejects. See [Behavior](docs/behavior.md).
+The call resolves `{ reason, buttonIndex }`, and the tapped button's `onPress` runs. Give buttons a `value` instead to branch on the result: it resolves as `value`, typed from the buttons ([Button values](docs/api.md#button-values)). `reason` is `'selected'`, `'cancelled'` (the cancel button, a backdrop tap, back or a swipe) or `'dismissed'` (closed from code). The promise never rejects. See [Behavior](docs/behavior.md).
 
 ### Presentation styles
 

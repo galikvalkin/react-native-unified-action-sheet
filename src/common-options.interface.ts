@@ -1,5 +1,10 @@
-export interface BaseButtonInterface {
+/// V is the type of the button's value; see value.
+export interface BaseButtonInterface<V = unknown> {
   label: string;
+  /// Anything that identifies this button to your code. It comes back as the
+  /// result's value when this button closes the sheet, so you can branch on
+  /// what was picked instead of on its index. It never reaches native code.
+  value?: V;
   style?: 'cancel' | 'destructive';
   disabled?: boolean;
   /// The default action, emphasized: bold on Android and in the iOS bottom

@@ -11,12 +11,12 @@ import {
 
 | Function | Resolves with |
 | --- | --- |
-| `showActionSheetWithOptions(options)` | `{ reason, buttonIndex }` |
-| `showPromptWithOptions(options)` | `{ reason, buttonIndex, text, password? }` |
+| `showActionSheetWithOptions(options)` | `{ reason, buttonIndex, value? }` |
+| `showPromptWithOptions(options)` | `{ reason, buttonIndex, value?, text, password? }` |
 | `dismissActionSheet()` | closes the most recently opened sheet or prompt |
 | `dismissAllActionSheets()` | closes every open sheet and prompt |
 
-`reason` is `'selected'` (a button other than cancel), `'cancelled'` (the cancel button, a backdrop tap, back or a swipe down) or `'dismissed'` (`dismissActionSheet()`, `dismissAllActionSheets()` or a JS reload). `buttonIndex` is the button that closed it: the cancel button's index or `-1` for a cancellation, `undefined` for a dismissal. What each gesture resolves with, and which `onPress` runs, is in [Behavior](behavior.md).
+`reason` is `'selected'` (a button other than cancel), `'cancelled'` (the cancel button, a backdrop tap, back or a swipe down) or `'dismissed'` (`dismissActionSheet()`, `dismissAllActionSheets()` or a JS reload). `buttonIndex` is the button that closed it: the cancel button's index or `-1` for a cancellation, `undefined` for a dismissal. `value` is that button's `value`, when it has one. What each gesture resolves with, and which `onPress` runs, is in [Behavior](behavior.md).
 
 ## Buttons
 
@@ -28,11 +28,30 @@ import {
 | `style` | `'cancel' \| 'destructive'` | `'cancel'` renders a separated row and resolves on a backdrop tap or back. Only the first `'cancel'` counts. `'destructive'` uses the destructive color. |
 | `disabled` | `boolean` | Renders the row dimmed and ignores taps. Independent of `style`. |
 | `preferred` | `boolean` | The default action, emphasized. Only the first preferred button counts. On Android and in the iOS bottom sheet the row is bold. In iOS centered alerts and prompts it gets UIKit's own preferred-action style, a filled button from iOS 26 and bold text before, and in a prompt the return key presses it. UIKit ignores it in the standard action sheet. |
+| `value` | any | Comes back as the result's `value` when this button closes the sheet, so you can branch on what was picked instead of its index. Stays in JS; it never crosses to native code, so anything works, functions and objects included. See [Button values](#button-values). |
 | `onPress` | `() => void` | Runs when this button resolves the sheet. A prompt's receives `{ text, password? }`. |
 | `requiresText` | `boolean` | Prompts only: keeps the button disabled while a field is empty. |
 | `testID` | `string` | Finds the button in end-to-end tests; not shown or spoken. Every style on both platforms. See [Testing](testing.md#end-to-end-tests). |
 | `accessibilityLabel` | `string` | What screen readers say instead of the label. The iOS bottom sheet and every Android style; iOS alerts, action sheets and prompts ignore it, since `UIAlertAction` has no public API for it. |
 | `accessibilityHint` | `string` | Extra spoken guidance after the label, e.g. what the button does. Same coverage as `accessibilityLabel`. |
+
+### Button values
+
+Give buttons a `value` and read it from the result:
+
+```ts
+const { value } = await showActionSheetWithOptions({
+  options: [
+    { label: 'Share', value: 'share' },
+    { label: 'Duplicate', value: 'duplicate' },
+    { label: 'Cancel', style: 'cancel' },
+  ],
+});
+
+if (value === 'share') share();
+```
+
+`value` is typed from the buttons: here it is `'share' | 'duplicate' | undefined`, with no annotations. It is `undefined` on a dismissal, on a cancellation without a cancel button, and when the button that closed the sheet has no `value`. A cancellation carries the cancel button's `value`, if it has one.
 
 ## Sheet options
 
@@ -103,4 +122,4 @@ A prompt is always centered. UIKit has no text field in an action sheet, so `pre
 
 ## Types
 
-Every options, button and result type is exported for typing your own wrappers: `ActionSheetOptionsInterface`, `ActionSheetResultInterface`, `ActionSheetDetent`, `PromptOptionsInterface`, `PromptResultInterface`, `PromptValuesInterface`, `CloseReason`, and the interfaces they are composed from. The result types are discriminated unions on `reason`, so checking `reason !== 'dismissed'` narrows `buttonIndex` to a number.
+Every options, button and result type is exported for typing your own wrappers, each generic over the buttons' value type (`ActionSheetOptionsInterface<V>`, `ActionSheetResultInterface<V>`, and so on; it defaults to `unknown`): `ActionSheetOptionsInterface`, `ActionSheetResultInterface`, `ActionSheetDetent`, `PromptOptionsInterface`, `PromptResultInterface`, `PromptValuesInterface`, `CloseReason`, and the interfaces they are composed from. The result types are discriminated unions on `reason`, so checking `reason !== 'dismissed'` narrows `buttonIndex` to a number.

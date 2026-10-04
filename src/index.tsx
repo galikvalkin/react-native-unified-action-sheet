@@ -279,18 +279,34 @@ const withAnchorRect = (
   });
 };
 
-export const showActionSheetWithOptions = (
-  options: ActionSheetOptionsInterface
-): Promise<ActionSheetResultInterface> => {
+/// The value of the button a result points at, if it has one. A dismissal
+/// and a cancellation without a cancel button point at none.
+const withValue = <V, R extends CloseResultInterface>(
+  result: R,
+  buttons: ReadonlyArray<{ value?: V }>
+): R & { value?: V } => {
+  const value =
+    result.buttonIndex == null ? undefined : buttons[result.buttonIndex]?.value;
+
+  return value === undefined ? result : { ...result, value };
+};
+
+/// V is inferred from the buttons' values, literals included: value: 'share'
+/// makes result.value 'share' | ..., with no annotations needed.
+export const showActionSheetWithOptions = <const V = unknown,>(
+  options: ActionSheetOptionsInterface<V>
+): Promise<ActionSheetResultInterface<V>> => {
   const wire = toWireOptions(options);
 
   // -1 and a dismissal index nothing, so optional chaining covers both.
-  const press = (result: ActionSheetResultInterface) => {
+  const press = (
+    result: ActionSheetResultInterface
+  ): ActionSheetResultInterface<V> => {
     if (result.buttonIndex != null) {
       options.options[result.buttonIndex]?.onPress?.();
     }
 
-    return result;
+    return withValue(result, options.options);
   };
 
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
@@ -331,9 +347,9 @@ export const dismissAllActionSheets = (): void => {
 /// UIAlertController alert with addTextField, Android the same AppCompatDialog
 /// the centered style uses. React Native's own Alert.prompt is iOS-only and a
 /// silent no-op on Android, which is the gap this fills.
-export const showPromptWithOptions = (
-  options: PromptOptionsInterface
-): Promise<PromptResultInterface> => {
+export const showPromptWithOptions = <const V = unknown,>(
+  options: PromptOptionsInterface<V>
+): Promise<PromptResultInterface<V>> => {
   const {
     options: buttons,
     secureTextEntry,
@@ -366,12 +382,17 @@ export const showPromptWithOptions = (
       text: '',
       password: '',
     }))
-    .then(({ buttonIndex, text, password }): PromptResultInterface => ({
-      ...toCloseResult(buttonIndex, cancelButtonIndex),
-      text,
-      // Even a dismissal carries the fields, so a draft is recoverable.
-      ...(hasPassword ? { password } : {}),
-    }))
+    .then(({ buttonIndex, text, password }): PromptResultInterface<V> =>
+      withValue(
+        {
+          ...toCloseResult(buttonIndex, cancelButtonIndex),
+          text,
+          // Even a dismissal carries the fields, so a draft is recoverable.
+          ...(hasPassword ? { password } : {}),
+        },
+        buttons
+      )
+    )
     .then((result) => {
       // The values go to the handler, so a caller using onPress alone never
       // has to read the resolved value.
