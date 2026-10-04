@@ -10,7 +10,6 @@ import type {
   CloseResultInterface,
 } from './common-options.interface';
 import type {
-  PromptButtonInterface,
   PromptOptionsInterface,
   PromptResultInterface,
 } from './prompt-options.interface';
@@ -44,20 +43,23 @@ export type {
 
 const DISMISSED_BY_API = -2;
 
-/// The native wire format is index-based; the public API is not. Nothing below
-/// index.tsx knows buttons are described as objects.
-type WireButtons = {
-  options: string[];
-  cancelButtonIndex?: number;
-  destructiveButtonIndices?: number[];
-  disabledButtonIndices?: number[];
-  preferredButtonIndex?: number;
-  /// Aligned with options; '' for a button without one.
-  testIDs?: string[];
-  /// Same alignment as testIDs.
-  accessibilityLabels?: string[];
-  accessibilityHints?: string[];
+/// One button as it crosses the bridge: the public shape minus onPress, with
+/// the "only the first counts" rules for cancel and preferred already applied,
+/// so neither native side has to repeat them. Results still come back as an
+/// index into this array.
+type WireButton = {
+  label: string;
+  style?: 'cancel' | 'destructive';
+  disabled?: boolean;
+  preferred?: boolean;
+  testID?: string;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  /// Prompts only.
+  requiresText?: boolean;
 };
+
+type WireButtons = { buttons: WireButton[] };
 
 /// Colors cross as React Native's processed ARGB numbers, not strings.
 type WireColors = {
@@ -101,8 +103,6 @@ const toWireColors = (colors: {
 const nativeModule = (): Spec =>
   require('./NativeUnifiedActionSheet').default as Spec;
 
-/// Flattens the buttons into the labels and index sets the native side expects.
-/// Only the first button styled 'cancel' counts, since there is one cancel row.
 const toWireOptions = ({
   options,
   // Dropped deliberately: the anchor is a ref, and only its measured rect
@@ -127,52 +127,55 @@ type WirePromptOptions = Omit<
   WireButtons &
   WireColors & {
     type: NonNullable<PromptOptionsInterface['type']>;
-    textRequiredButtonIndices?: number[];
   };
 
-/// Same flattening as the sheet: labels plus index sets. Kept generic over the
-/// button shape so the two APIs cannot disagree about what 'cancel' means.
+/// Shared by sheets and prompts, so the two cannot disagree about what
+/// 'cancel' means. Only the first button styled 'cancel' counts, since there is
+/// one cancel row; only the first preferred one does too. Unset fields are
+/// left off rather than sent as undefined.
 const toWireButtons = (
-  buttons: ReadonlyArray<BaseButtonInterface>
+  buttons: ReadonlyArray<BaseButtonInterface & { requiresText?: boolean }>
 ): WireButtons => {
-  const labels: string[] = [];
-  const destructive: number[] = [];
-  const disabled: number[] = [];
-  let cancelButtonIndex: number | undefined;
-  let preferredButtonIndex: number | undefined;
-  const testIDs = buttons.map((button) => button.testID ?? '');
-  const accessibilityLabels = buttons.map(
-    (button) => button.accessibilityLabel ?? ''
-  );
-  const accessibilityHints = buttons.map(
-    (button) => button.accessibilityHint ?? ''
-  );
-
-  buttons.forEach((button, index) => {
-    labels.push(button.label);
-
-    if (button.style === 'destructive') destructive.push(index);
-    if (button.style === 'cancel' && cancelButtonIndex == null) {
-      cancelButtonIndex = index;
-    }
-    if (button.disabled) disabled.push(index);
-    if (button.preferred && preferredButtonIndex == null) {
-      preferredButtonIndex = index;
-    }
-  });
+  let hasCancel = false;
+  let hasPreferred = false;
 
   return {
-    options: labels,
-    ...(cancelButtonIndex == null ? {} : { cancelButtonIndex }),
-    ...(destructive.length === 0
-      ? {}
-      : { destructiveButtonIndices: destructive }),
-    ...(disabled.length === 0 ? {} : { disabledButtonIndices: disabled }),
-    ...(preferredButtonIndex == null ? {} : { preferredButtonIndex }),
-    ...(testIDs.some(Boolean) ? { testIDs } : {}),
-    ...(accessibilityLabels.some(Boolean) ? { accessibilityLabels } : {}),
-    ...(accessibilityHints.some(Boolean) ? { accessibilityHints } : {}),
+    buttons: buttons.map((button) => {
+      const isCancel = button.style === 'cancel' && !hasCancel;
+      const isPreferred = Boolean(button.preferred) && !hasPreferred;
+      hasCancel ||= isCancel;
+      hasPreferred ||= isPreferred;
+
+      const style =
+        button.style === 'destructive'
+          ? 'destructive'
+          : isCancel
+            ? 'cancel'
+            : undefined;
+
+      return {
+        label: button.label,
+        ...(style ? { style } : {}),
+        ...(button.disabled ? { disabled: true } : {}),
+        ...(isPreferred ? { preferred: true } : {}),
+        ...(button.testID ? { testID: button.testID } : {}),
+        ...(button.accessibilityLabel
+          ? { accessibilityLabel: button.accessibilityLabel }
+          : {}),
+        ...(button.accessibilityHint
+          ? { accessibilityHint: button.accessibilityHint }
+          : {}),
+        ...(button.requiresText ? { requiresText: true } : {}),
+      };
+    }),
   };
+};
+
+/// The cancel row's index in the wire buttons, if there is one.
+const cancelIndexOf = ({ buttons }: WireButtons): number | undefined => {
+  const index = buttons.findIndex((button) => button.style === 'cancel');
+
+  return index < 0 ? undefined : index;
 };
 
 /// Native sides only report an index: DISMISSED_BY_API, the cancel button's
@@ -199,14 +202,17 @@ const DISMISSED: CloseResultInterface = {
 const showWithNativeModule = (
   options: WireOptions,
   onShow: () => void
-): Promise<ActionSheetResultInterface> =>
-  nativeModule()
-    .showActionSheetWithOptions(options, onShow)
-    // A native failure reads as a cancellation rather than a rejection.
-    .catch(() => options.cancelButtonIndex ?? -1)
-    .then((buttonIndex) =>
-      toCloseResult(buttonIndex, options.cancelButtonIndex)
-    );
+): Promise<ActionSheetResultInterface> => {
+  const cancelButtonIndex = cancelIndexOf(options);
+
+  return (
+    nativeModule()
+      .showActionSheetWithOptions(options, onShow)
+      // A native failure reads as a cancellation rather than a rejection.
+      .catch(() => cancelButtonIndex ?? -1)
+      .then((buttonIndex) => toCloseResult(buttonIndex, cancelButtonIndex))
+  );
+};
 
 let warnedMaterialDisabled = false;
 
@@ -339,20 +345,14 @@ export const showPromptWithOptions = (
     destructiveColor,
     ...rest
   } = options;
-  const textRequired = buttons.flatMap(
-    (button: PromptButtonInterface, index) =>
-      button.requiresText ? [index] : []
-  );
   const wire: WirePromptOptions = {
     ...rest,
     ...toWireButtons(buttons),
     ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
     // One field of truth for the native sides: the old boolean maps onto type.
     type: type ?? (secureTextEntry ? 'secure-text' : 'plain-text'),
-    ...(textRequired.length === 0
-      ? {}
-      : { textRequiredButtonIndices: textRequired }),
   };
+  const cancelButtonIndex = cancelIndexOf(wire);
   const hasPassword = wire.type === 'login-password';
 
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
@@ -362,12 +362,12 @@ export const showPromptWithOptions = (
   return nativeModule()
     .showPromptWithOptions(wire, () => onShow?.())
     .catch(() => ({
-      buttonIndex: wire.cancelButtonIndex ?? -1,
+      buttonIndex: cancelButtonIndex ?? -1,
       text: '',
       password: '',
     }))
     .then(({ buttonIndex, text, password }): PromptResultInterface => ({
-      ...toCloseResult(buttonIndex, wire.cancelButtonIndex),
+      ...toCloseResult(buttonIndex, cancelButtonIndex),
       text,
       // Even a dismissal carries the fields, so a draft is recoverable.
       ...(hasPassword ? { password } : {}),

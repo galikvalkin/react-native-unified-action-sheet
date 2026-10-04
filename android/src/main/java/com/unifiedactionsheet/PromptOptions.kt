@@ -61,116 +61,26 @@ internal enum class PromptType {
 }
 
 internal data class PromptOptions(
-  val options: List<String>,
-  val cancelButtonIndex: Int?,
-  val destructiveButtonIndices: Set<Int>,
-  val disabledButtonIndices: Set<Int>,
-  val title: String?,
-  val message: String?,
-  val type: PromptType,
-  val placeholder: String?,
-  val passwordPlaceholder: String?,
-  val defaultValue: String?,
-  val keyboardType: PromptKeyboardType,
-  val preferredButtonIndex: Int?,
-  /// Buttons kept disabled while any field is empty.
-  val textRequiredButtonIndices: Set<Int>,
-  val testIDs: List<String?>,
-  val accessibilityLabels: List<String?>,
-  val accessibilityHints: List<String?>,
-  /// End-to-end ids: the prompt itself, its field, its password field.
-  val testID: String?,
-  val fieldTestID: String?,
-  val passwordFieldTestID: String?,
-  val tintColor: Int?,
-  val cancelButtonTintColor: Int?,
-  val destructiveColor: Int?,
-  val buttonTextAlignment: ButtonTextAlignment,
-  val userInterfaceStyle: ForcedAppearance,
-) {
-  /// The prompt reuses the sheet's content and dialog code, which are written
-  /// against ActionSheetOptions. Presentation is fixed to centered: UIKit has
-  /// no text field in an action sheet, so an anchored prompt has no iOS
-  /// counterpart and would break the "same options behave the same way" rule.
-  fun toSheetOptions(): ActionSheetOptions = ActionSheetOptions(
-    options = options,
-    cancelButtonIndex = cancelButtonIndex,
-    destructiveButtonIndices = destructiveButtonIndices,
-    title = title,
-    message = message,
-    tintColor = tintColor,
-    cancelButtonTintColor = cancelButtonTintColor,
-    destructiveColor = destructiveColor,
-    buttonTextAlignment = buttonTextAlignment,
-    disabledButtonIndices = disabledButtonIndices,
-    userInterfaceStyle = userInterfaceStyle,
-    presentationStyle = PresentationStyle.CENTERED,
-    anchorRect = null,
-    anchorAlignment = AnchorAlignment.START,
-    preferredButtonIndex = preferredButtonIndex,
-    testIDs = testIDs,
-    accessibilityLabels = accessibilityLabels,
-    accessibilityHints = accessibilityHints,
-    testID = testID,
-  )
-
+  val content: SheetContentOptions,
+  val type: PromptType = PromptType.PLAIN_TEXT,
+  val placeholder: String? = null,
+  val passwordPlaceholder: String? = null,
+  val defaultValue: String? = null,
+  val keyboardType: PromptKeyboardType = PromptKeyboardType.DEFAULT,
+  /// End-to-end ids for its field and its password field.
+  val fieldTestID: String? = null,
+  val passwordFieldTestID: String? = null,
+) : SheetContent by content {
   companion object {
-    fun fromReadableMap(map: ReadableMap): PromptOptions {
-      val labels = mutableListOf<String>()
-      map.getArray("options")?.let { array ->
-        for (index in 0 until array.size()) {
-          array.getString(index)?.let(labels::add)
-        }
-      }
-
-      return PromptOptions(
-        options = labels,
-        cancelButtonIndex = optInt(map, "cancelButtonIndex"),
-        destructiveButtonIndices = optIndices(map, "destructiveButtonIndices"),
-        disabledButtonIndices = optIndices(map, "disabledButtonIndices"),
-        title = optString(map, "title"),
-        message = optString(map, "message"),
-        type = PromptType.fromWire(optString(map, "type")),
-        placeholder = optString(map, "placeholder"),
-        passwordPlaceholder = optString(map, "passwordPlaceholder"),
-        defaultValue = optString(map, "defaultValue"),
-        keyboardType = PromptKeyboardType.fromWire(optString(map, "keyboardType")),
-        preferredButtonIndex = optInt(map, "preferredButtonIndex"),
-        textRequiredButtonIndices = optIndices(map, "textRequiredButtonIndices"),
-        testIDs = ActionSheetOptions.optAligned(map, "testIDs"),
-        accessibilityLabels = ActionSheetOptions.optAligned(map, "accessibilityLabels"),
-        accessibilityHints = ActionSheetOptions.optAligned(map, "accessibilityHints"),
-        testID = optString(map, "testID")?.takeIf { it.isNotEmpty() },
-        fieldTestID = optString(map, "fieldTestID")?.takeIf { it.isNotEmpty() },
-        passwordFieldTestID = optString(map, "passwordFieldTestID")?.takeIf { it.isNotEmpty() },
-        tintColor = optColor(map, "tintColor"),
-        cancelButtonTintColor = optColor(map, "cancelButtonTintColor"),
-        destructiveColor = optColor(map, "destructiveColor"),
-        buttonTextAlignment = ButtonTextAlignment.fromWire(optString(map, "buttonTextAlignment")),
-        userInterfaceStyle = ForcedAppearance.fromWire(optString(map, "userInterfaceStyle")),
-      )
-    }
-
-    private fun optIndices(map: ReadableMap, key: String): Set<Int> {
-      val indices = mutableSetOf<Int>()
-      map.getArray(key)?.let { array ->
-        for (index in 0 until array.size()) {
-          indices.add(array.getInt(index))
-        }
-      }
-
-      return indices
-    }
-
-    private fun optInt(map: ReadableMap, key: String): Int? =
-      if (map.hasKey(key) && !map.isNull(key)) map.getInt(key) else null
-
-    /// A color processed by React Native's processColor: an ARGB number. Read
-    /// as a double and truncated to 32 bits, so an unsigned value works too.
-    private fun optColor(map: ReadableMap, key: String): Int? =
-      if (map.hasKey(key) && !map.isNull(key)) map.getDouble(key).toLong().toInt() else null
-
-    private fun optString(map: ReadableMap, key: String): String? =
-      if (map.hasKey(key) && !map.isNull(key)) map.getString(key) else null
+    fun fromReadableMap(map: ReadableMap) = PromptOptions(
+      content = SheetContentOptions.fromReadableMap(map),
+      type = PromptType.fromWire(map.optString("type")),
+      placeholder = map.optString("placeholder"),
+      passwordPlaceholder = map.optString("passwordPlaceholder"),
+      defaultValue = map.optString("defaultValue"),
+      keyboardType = PromptKeyboardType.fromWire(map.optString("keyboardType")),
+      fieldTestID = map.optString("fieldTestID")?.takeIf { it.isNotEmpty() },
+      passwordFieldTestID = map.optString("passwordFieldTestID")?.takeIf { it.isNotEmpty() },
+    )
   }
 }

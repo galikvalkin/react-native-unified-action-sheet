@@ -9,6 +9,47 @@
 @interface UnifiedActionSheet () <NativeUnifiedActionSheetSpec, RCTInvalidating>
 @end
 
+/// What sheets and prompts share: the buttons, header, colors and appearance.
+/// A template because codegen gives each method its own options struct, with
+/// the same accessors.
+template <typename Options>
+static NSMutableDictionary *contentPayload(Options &options)
+{
+  NSMutableArray *buttons = [NSMutableArray new];
+  auto wireButtons = options.buttons();
+  for (size_t index = 0; index < wireButtons.size(); ++index) {
+    auto button = wireButtons[index];
+    NSMutableDictionary *entry = [NSMutableDictionary new];
+    entry[@"label"] = button.label();
+    entry[@"style"] = button.style();
+    entry[@"disabled"] = @(button.disabled().value_or(false));
+    entry[@"preferred"] = @(button.preferred().value_or(false));
+    entry[@"testID"] = button.testID();
+    entry[@"accessibilityLabel"] = button.accessibilityLabel();
+    entry[@"accessibilityHint"] = button.accessibilityHint();
+    entry[@"requiresText"] = @(button.requiresText().value_or(false));
+    [buttons addObject:entry];
+  }
+
+  NSMutableDictionary *payload = [NSMutableDictionary new];
+  payload[@"buttons"] = buttons;
+  payload[@"title"] = options.title();
+  payload[@"message"] = options.message();
+  if (options.tintColor()) {
+    payload[@"tintColor"] = @(*options.tintColor());
+  }
+  if (options.cancelButtonTintColor()) {
+    payload[@"cancelButtonTintColor"] = @(*options.cancelButtonTintColor());
+  }
+  if (options.destructiveColor()) {
+    payload[@"destructiveColor"] = @(*options.destructiveColor());
+  }
+  payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
+  payload[@"testID"] = options.testID();
+
+  return payload;
+}
+
 @implementation UnifiedActionSheet
 
 RCT_EXPORT_MODULE()
@@ -40,65 +81,11 @@ RCT_EXPORT_METHOD(showActionSheetWithOptions
                   : (RCTPromiseResolveBlock)resolve reject
                   : (RCTPromiseRejectBlock)reject)
 {
-  NSMutableDictionary *payload = [NSMutableDictionary new];
-
-  payload[@"options"] = RCTConvertVecToArray(options.options(), ^id(NSString *element) {
-    return element;
-  });
-
-  if (options.cancelButtonIndex()) {
-    payload[@"cancelButtonIndex"] = @(*options.cancelButtonIndex());
-  }
-  if (options.destructiveButtonIndices()) {
-    payload[@"destructiveButtonIndices"] =
-        RCTConvertVecToArray(*options.destructiveButtonIndices(), ^id(double element) {
-          return @(element);
-        });
-  }
-  if (options.disabledButtonIndices()) {
-    payload[@"disabledButtonIndices"] = RCTConvertVecToArray(*options.disabledButtonIndices(), ^id(double element) {
-      return @(element);
-    });
-  }
-
-  payload[@"title"] = options.title();
-  payload[@"message"] = options.message();
-  if (options.tintColor()) {
-    payload[@"tintColor"] = @(*options.tintColor());
-  }
-  if (options.cancelButtonTintColor()) {
-    payload[@"cancelButtonTintColor"] = @(*options.cancelButtonTintColor());
-  }
-  payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
-  if (options.destructiveColor()) {
-    payload[@"destructiveColor"] = @(*options.destructiveColor());
-  }
+  NSMutableDictionary *payload = contentPayload(options);
   payload[@"presentationStyle"] = options.presentationStyle();
-
-  if (options.preferredButtonIndex()) {
-    payload[@"preferredButtonIndex"] = @(*options.preferredButtonIndex());
-  }
   if (options.detents()) {
-    payload[@"detents"] = RCTConvertVecToArray(*options.detents(), ^id(NSString *element) {
-      return element;
-    });
+    payload[@"detents"] = RCTConvertVecToArray(*options.detents());
   }
-  if (options.testIDs()) {
-    payload[@"testIDs"] = RCTConvertVecToArray(*options.testIDs(), ^id(NSString *element) {
-      return element;
-    });
-  }
-  if (options.accessibilityLabels()) {
-    payload[@"accessibilityLabels"] = RCTConvertVecToArray(*options.accessibilityLabels(), ^id(NSString *element) {
-      return element;
-    });
-  }
-  if (options.accessibilityHints()) {
-    payload[@"accessibilityHints"] = RCTConvertVecToArray(*options.accessibilityHints(), ^id(NSString *element) {
-      return element;
-    });
-  }
-  payload[@"testID"] = options.testID();
 
   // The anchor arrives already measured from the ref on the JS side, so this
   // module never resolves a view and needs no React Native view API.
@@ -129,54 +116,7 @@ RCT_EXPORT_METHOD(showPromptWithOptions
                   : (RCTPromiseResolveBlock)resolve reject
                   : (RCTPromiseRejectBlock)reject)
 {
-  NSMutableDictionary *payload = [NSMutableDictionary new];
-
-  payload[@"options"] = RCTConvertVecToArray(options.options(), ^id(NSString *element) {
-    return element;
-  });
-
-  if (options.cancelButtonIndex()) {
-    payload[@"cancelButtonIndex"] = @(*options.cancelButtonIndex());
-  }
-  if (options.destructiveButtonIndices()) {
-    payload[@"destructiveButtonIndices"] =
-        RCTConvertVecToArray(*options.destructiveButtonIndices(), ^id(double element) {
-          return @(element);
-        });
-  }
-  if (options.disabledButtonIndices()) {
-    payload[@"disabledButtonIndices"] = RCTConvertVecToArray(*options.disabledButtonIndices(), ^id(double element) {
-      return @(element);
-    });
-  }
-  if (options.preferredButtonIndex()) {
-    payload[@"preferredButtonIndex"] = @(*options.preferredButtonIndex());
-  }
-  if (options.textRequiredButtonIndices()) {
-    payload[@"textRequiredButtonIndices"] =
-        RCTConvertVecToArray(*options.textRequiredButtonIndices(), ^id(double element) {
-          return @(element);
-        });
-  }
-  if (options.testIDs()) {
-    payload[@"testIDs"] = RCTConvertVecToArray(*options.testIDs(), ^id(NSString *element) {
-      return element;
-    });
-  }
-  if (options.accessibilityLabels()) {
-    payload[@"accessibilityLabels"] = RCTConvertVecToArray(*options.accessibilityLabels(), ^id(NSString *element) {
-      return element;
-    });
-  }
-  if (options.accessibilityHints()) {
-    payload[@"accessibilityHints"] = RCTConvertVecToArray(*options.accessibilityHints(), ^id(NSString *element) {
-      return element;
-    });
-  }
-  payload[@"testID"] = options.testID();
-
-  payload[@"title"] = options.title();
-  payload[@"message"] = options.message();
+  NSMutableDictionary *payload = contentPayload(options);
   payload[@"type"] = options.type();
   payload[@"placeholder"] = options.placeholder();
   payload[@"passwordPlaceholder"] = options.passwordPlaceholder();
@@ -184,16 +124,6 @@ RCT_EXPORT_METHOD(showPromptWithOptions
   payload[@"passwordFieldTestID"] = options.passwordFieldTestID();
   payload[@"defaultValue"] = options.defaultValue();
   payload[@"keyboardType"] = options.keyboardType();
-  if (options.tintColor()) {
-    payload[@"tintColor"] = @(*options.tintColor());
-  }
-  if (options.cancelButtonTintColor()) {
-    payload[@"cancelButtonTintColor"] = @(*options.cancelButtonTintColor());
-  }
-  if (options.destructiveColor()) {
-    payload[@"destructiveColor"] = @(*options.destructiveColor());
-  }
-  payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
 
   dispatch_async(dispatch_get_main_queue(), ^{
     [UnifiedActionSheetImpl.shared showPromptWithOptions:payload

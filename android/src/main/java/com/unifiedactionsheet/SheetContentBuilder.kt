@@ -70,7 +70,7 @@ internal fun View.optionRows(): List<OptionRow> = when (this) {
 
 internal fun buildContent(
   context: Context,
-  options: ActionSheetOptions,
+  options: SheetContent,
   palette: SheetPalette,
   includeCancelRow: Boolean = true,
   /// Sits between the message and the rows. Only the prompt supplies one.
@@ -103,49 +103,29 @@ internal fun buildContent(
     orientation = LinearLayout.VERTICAL
   }
 
-  options.options.forEachIndexed { index, label ->
-    if (index == options.cancelButtonIndex) return@forEachIndexed
-    val isDestructive = index in options.destructiveButtonIndices
-    optionRows.addView(
-      buildOption(
-        context = context,
-        index = index,
-        testID = options.testIDs.getOrNull(index),
-        accessibilityLabel = options.accessibilityLabels.getOrNull(index),
-        accessibilityHint = options.accessibilityHints.getOrNull(index),
-        label = label,
-        color = if (isDestructive) options.destructiveColor ?: palette.error else optionColor,
-        centered = centerLabels,
-        enabled = index !in options.disabledButtonIndices,
-        bold = index == options.preferredButtonIndex,
-        disabledColor = disabledColor,
-        onPress = { onSelect(index) },
-      ),
+  val row = { index: Int, button: SheetButton, color: Int ->
+    buildOption(
+      context = context,
+      index = index,
+      button = button,
+      color = color,
+      centered = centerLabels,
+      disabledColor = disabledColor,
+      onPress = { onSelect(index) },
     )
   }
 
-  if (includeCancelRow) {
-    options.cancelButtonIndex?.let { cancelIdx ->
-      if (cancelIdx in options.options.indices) {
-        optionRows.addView(buildSpacer(context))
-        optionRows.addView(
-          buildOption(
-            context = context,
-            index = cancelIdx,
-            testID = options.testIDs.getOrNull(cancelIdx),
-            accessibilityLabel = options.accessibilityLabels.getOrNull(cancelIdx),
-            accessibilityHint = options.accessibilityHints.getOrNull(cancelIdx),
-            label = options.options[cancelIdx],
-            color = cancelColor,
-            centered = centerLabels,
-            enabled = cancelIdx !in options.disabledButtonIndices,
-            bold = cancelIdx == options.preferredButtonIndex,
-            disabledColor = disabledColor,
-            onPress = { onSelect(cancelIdx) },
-          ),
-        )
-      }
-    }
+  options.buttons.forEachIndexed { index, button ->
+    if (button.isCancel) return@forEachIndexed
+    val color = if (button.isDestructive) options.destructiveColor ?: palette.error else optionColor
+    optionRows.addView(row(index, button, color))
+  }
+
+  // Last, after a gap, wherever it sits in the list.
+  val cancelIndex = options.cancelButtonIndex
+  if (includeCancelRow && cancelIndex != null) {
+    optionRows.addView(buildSpacer(context))
+    optionRows.addView(row(cancelIndex, options.buttons[cancelIndex], cancelColor))
   }
 
   val scroll = NestedScrollView(context).apply {
@@ -244,29 +224,24 @@ private fun buildHeader(
 private fun buildOption(
   context: Context,
   index: Int,
-  testID: String?,
-  accessibilityLabel: String?,
-  accessibilityHint: String?,
-  label: String,
+  button: SheetButton,
   color: Int,
   centered: Boolean,
-  enabled: Boolean,
-  bold: Boolean,
   disabledColor: Int,
   onPress: () -> Unit,
-): View = OptionRow(context, index, testID, color, disabledColor).apply {
-  text = label
+): View = OptionRow(context, index, button.testID, color, disabledColor).apply {
+  text = button.label
   gravity = if (centered) Gravity.CENTER_HORIZONTAL else Gravity.START
   setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 16))
   setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
   // The preferred button: bold, as iOS shows an alert's preferred action.
-  if (bold) setTypeface(typeface, Typeface.BOLD)
+  if (button.isPreferred) setTypeface(typeface, Typeface.BOLD)
   background = AppCompatResources.getDrawable(context, selectableItemBackgroundRes(context))
   isClickable = true
   isFocusable = true
-  setRowEnabled(enabled)
+  setRowEnabled(!button.isDisabled)
   setOnClickListener { onPress() }
-  contentDescription = accessibilityLabel ?: label
+  contentDescription = button.accessibilityLabel ?: button.label
   ViewCompat.setAccessibilityDelegate(
     this,
     object : AccessibilityDelegateCompat() {
@@ -276,8 +251,8 @@ private fun buildOption(
       ) {
         super.onInitializeAccessibilityNodeInfo(host, info)
         info.className = Button::class.java.name
-        testID?.let { info.viewIdResourceName = it }
-        accessibilityHint?.let { info.hintText = it }
+        button.testID?.let { info.viewIdResourceName = it }
+        button.accessibilityHint?.let { info.hintText = it }
       }
     },
   )
