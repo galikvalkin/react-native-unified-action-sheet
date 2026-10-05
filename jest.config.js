@@ -7,5 +7,6 @@ module.exports = {
     '<rootDir>/lib/',
     '<rootDir>/example/',
     '<rootDir>/example-legacy/',
+    '<rootDir>/example-web/',
   ],
 };

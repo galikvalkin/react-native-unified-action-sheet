@@ -77,6 +77,31 @@ jobs:
       - name: Build package
         run: yarn prepare
 
+  # The web demo, bundled the way a React Native Web app bundles the library:
+  # .web.ts files over native ones. Fast enough to run on every change. It
+  # needs none of the root workspace's dependencies, only its own.
+  build-web:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: example-web/package-lock.json
+
+      - name: Install web example dependencies
+        run: npm ci
+        working-directory: example-web
+
+      - name: Build web example
+        run: npm run build
+        working-directory: example-web
+
   build-android:
     needs: changes
     if: needs.changes.outputs.android == 'true'

@@ -88,3 +88,6 @@ nitrogen/
 # demo source recordings (GIFs in docs/ are the committed artifacts)
 /ios.mov
 /android.mp4
+
+# example-web build output
+example-web/dist/

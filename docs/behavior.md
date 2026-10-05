@@ -19,7 +19,7 @@ A prompt resolves the same way, adding `text` (and `password` for `'login-passwo
 
 ## When `onShow` fires
 
-`onShow` runs once the sheet or prompt is on screen: on iOS when its presentation animation finishes, on Android when its window is shown (its enter animation may still be running). It runs at most once per call, and always before the promise resolves.
+`onShow` runs once the sheet or prompt is on screen: on iOS when its presentation animation finishes, on Android when its window is shown (its enter animation may still be running), on the web when its open transition ends. It runs at most once per call, and always before the promise resolves.
 
 It doesn't run when the sheet never appears: when there is no window or view controller to present from (iOS), no current activity (Android), or on a platform without the native module. The promise still resolves as usual. It also never runs after a JS reload for a sheet from the old runtime.
 
@@ -34,4 +34,5 @@ A sheet dismissed from code during its present animation did appear, so `onShow`
 - **Which gestures dismiss differs.** On iOS an action sheet can only be tapped away if it has a `'cancel'` button, and a `'centered'` one never can, because UIKit treats it as strictly modal. Android's centered dialog always cancels on a backdrop tap. Give a sheet a cancel button if you want that gesture everywhere. A `'bottom'` sheet can be swiped away on both platforms, with or without one.
 - **On iPad, a popover hides the cancel row**, since tapping outside already cancels. The index you receive is unaffected.
 - **Sheets stack.** Opening one over another puts it on top, and each resolves its own promise. Opening a sheet over a `Modal` does not dismiss the modal.
+- **On the web**, Escape and a backdrop click always cancel, whatever the style. How sheets look and behave there is in [Web](web.md).
 - **Light or dark follows the system setting** unless `userInterfaceStyle` forces one, chosen when the sheet opens. It uses its own palette, so it looks the same in any host app.

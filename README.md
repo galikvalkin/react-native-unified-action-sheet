@@ -1,6 +1,6 @@
 # react-native-unified-action-sheet
 
-Unified native action sheet for React Native, one API on iOS and Android.
+Unified native action sheet for React Native, one API on iOS and Android, and on the web through React Native Web.
 
 | | Light | Dark |
 | :---: | :---: | :---: |
@@ -10,6 +10,7 @@ Unified native action sheet for React Native, one API on iOS and Android.
 - **Fully native, always on top.** The sheet gets its own platform window, so it renders above your whole view tree, including an open [`Modal`](https://reactnative.dev/docs/modal). JS-rendered sheets live inside the component tree, where `overflow`, `zIndex` or a modal can clip or bury them.
 - **One API on both platforms**: action sheets, anchored popovers, bottom sheets and text prompts.
 - **Prompts on Android too.** React Native's `Alert.prompt` is iOS-only; `showPromptWithOptions()` works on both.
+- **Web too.** On React Native Web the same calls show a sheet drawn in the page, with nothing to set up. See [Web](docs/web.md).
 - **No dependencies.** `react` and `react-native` are peers; the Android bottom sheet's Material is opt-in.
 
 ## Installation
@@ -99,6 +100,7 @@ await showPromptWithOptions({
 - [Behavior](docs/behavior.md): what each gesture resolves with, and platform differences
 - [Bottom sheets](docs/bottom-sheet.md): both platforms, and enabling Material on Android
 - [Testing](docs/testing.md): the shipped Jest mock
+- [Web](docs/web.md): React Native Web setup, and how sheets look and behave there
 
 ## Compatibility
 

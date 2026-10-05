@@ -18,6 +18,8 @@ import {
 
 `reason` is `'selected'` (a button other than cancel), `'cancelled'` (the cancel button, a backdrop tap, back or a swipe down) or `'dismissed'` (`dismissActionSheet()`, `dismissAllActionSheets()` or a JS reload). `buttonIndex` is the button that closed it: the cancel button's index or `-1` for a cancellation, `undefined` for a dismissal. `value` is that button's `value`, when it has one. What each gesture resolves with, and which `onPress` runs, is in [Behavior](behavior.md).
 
+The tables below mark iOS and Android support. On the web every option works, the Android-only `buttonTextAlignment` and `anchorAlignment` included; how each style looks there is in [Web](web.md).
+
 ## Buttons
 
 `options` is the list of buttons, in order.
