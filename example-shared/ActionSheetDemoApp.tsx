@@ -55,6 +55,21 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
       },
     },
     {
+      // No onPress at all: show() reports the resolved value instead.
+      label: 'Button values',
+      options: {
+        title: 'Pick a size',
+        message:
+          'Each button has a value, which the result carries, typed from the buttons.',
+        options: [
+          { label: 'Small', value: 's' },
+          { label: 'Medium', value: 'm' },
+          { label: 'Large', value: 'l' },
+          { label: 'Cancel', style: 'cancel', value: 'none' },
+        ],
+      },
+    },
+    {
       label: 'Destructive + tint colors',
       options: {
         title: 'Delete item?',
@@ -308,6 +323,10 @@ export default function ActionSheetDemoApp() {
 
     if (result.reason === 'dismissed' || result.buttonIndex < 0) {
       setLastResult(`${demo.label} → ${result.reason}, no button`);
+    } else if (result.value !== undefined) {
+      setLastResult(
+        `${demo.label} → ${result.reason}, value ${JSON.stringify(result.value)}`
+      );
     }
   };
 

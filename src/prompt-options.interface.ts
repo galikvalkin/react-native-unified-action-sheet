@@ -12,15 +12,19 @@ export interface PromptValuesInterface {
   password?: string;
 }
 
-export interface PromptButtonInterface extends BaseButtonInterface {
+export interface PromptButtonInterface<
+  V = unknown,
+> extends BaseButtonInterface<V> {
   onPress?: (values: PromptValuesInterface) => void;
   /// Keeps this button disabled while the field is empty (for
   /// 'login-password', while either field is).
   requiresText?: boolean;
 }
 
-export interface PromptCommonOptionsInterface extends BaseOptionsInterface {
-  options: PromptButtonInterface[];
+export interface PromptCommonOptionsInterface<
+  V = unknown,
+> extends BaseOptionsInterface {
+  options: PromptButtonInterface<V>[];
   /// As in React Native's Alert.prompt. 'login-password' shows a second,
   /// secure field below the first. Defaults to 'plain-text'.
   type?: 'plain-text' | 'secure-text' | 'login-password';
@@ -41,8 +45,9 @@ export interface PromptCommonOptionsInterface extends BaseOptionsInterface {
 
 export type PromptAndroidOptionsInterface = BaseAndroidOptionsInterface;
 
-export interface PromptOptionsInterface
-  extends PromptCommonOptionsInterface, PromptAndroidOptionsInterface {}
+export interface PromptOptionsInterface<V = unknown>
+  extends PromptCommonOptionsInterface<V>, PromptAndroidOptionsInterface {}
 
-export type PromptResultInterface = CloseResultInterface &
-  PromptValuesInterface;
+/// value works as for sheets: the value of the button that closed the prompt.
+export type PromptResultInterface<V = unknown> = CloseResultInterface &
+  PromptValuesInterface & { value?: V };

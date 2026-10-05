@@ -977,3 +977,122 @@ describe('colors', () => {
     expect(passed).toMatchObject({ destructiveColor: 0xff123456 });
   });
 });
+
+describe('button values', () => {
+  it('resolves the value of the selected button', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+    mockNativeResponse = Promise.resolve(1);
+
+    const result = await showActionSheetWithOptions({
+      options: [
+        { label: 'Share', value: 'share' },
+        { label: 'Copy', value: 'copy' },
+      ],
+    });
+
+    expect(result).toEqual({
+      reason: 'selected',
+      buttonIndex: 1,
+      value: 'copy',
+    });
+  });
+
+  it("resolves the cancel button's value on a cancellation", async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+    mockNativeResponse = Promise.resolve(1);
+
+    const result = await showActionSheetWithOptions({
+      options: [
+        { label: 'Share', value: 'share' },
+        { label: 'Cancel', style: 'cancel', value: 'none' },
+      ],
+    });
+
+    expect(result).toEqual({
+      reason: 'cancelled',
+      buttonIndex: 1,
+      value: 'none',
+    });
+  });
+
+  it('carries no value on a dismissal, at -1, or for a button without one', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+    const options = [{ label: 'Share', value: 'share' }, { label: 'Copy' }];
+
+    mockNativeResponse = Promise.resolve(-2);
+    expect(await showActionSheetWithOptions({ options })).not.toHaveProperty(
+      'value'
+    );
+    mockNativeResponse = Promise.resolve(-1);
+    expect(await showActionSheetWithOptions({ options })).not.toHaveProperty(
+      'value'
+    );
+    mockNativeResponse = Promise.resolve(1);
+    expect(await showActionSheetWithOptions({ options })).not.toHaveProperty(
+      'value'
+    );
+  });
+
+  it('keeps values off the wire', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+    const options = [{ label: 'A', value: { id: 1 } }];
+
+    await showActionSheetWithOptions({ options });
+    await showPromptWithOptions({ options });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ buttons: [{ label: 'A' }] });
+    expect(
+      JSON.stringify(mockedNative().showActionSheetWithOptions.mock.calls[0])
+    ).not.toContain('"value"');
+    expect(
+      JSON.stringify(mockedNative().showPromptWithOptions.mock.calls[0])
+    ).not.toContain('"value"');
+  });
+
+  it('resolves the value with a prompt result, text included', async () => {
+    const { showPromptWithOptions } = loadIndex('android');
+    mockPromptResponse = Promise.resolve({
+      buttonIndex: 0,
+      text: 'Notes',
+      password: '',
+    });
+
+    const result = await showPromptWithOptions({
+      options: [{ label: 'Save', value: 'save' }, { label: 'Cancel' }],
+    });
+
+    expect(result).toEqual({
+      reason: 'selected',
+      buttonIndex: 0,
+      text: 'Notes',
+      value: 'save',
+    });
+  });
+
+  it('types the value as the union of the buttons’ values', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+
+    const sheet = await showActionSheetWithOptions({
+      options: [
+        { label: 'Share', value: 'share' },
+        { label: 'Copy', value: 'copy' },
+        { label: 'Cancel', style: 'cancel' },
+      ],
+    });
+    const prompt = await showPromptWithOptions({
+      options: [{ label: 'Save', value: 1 }],
+    });
+
+    // Compile-time checks: typecheck fails if the literals are widened.
+    const sheetValue: 'share' | 'copy' | undefined = sheet.value;
+    const promptValue: 1 | undefined = prompt.value;
+    // @ts-expect-error 'paste' is not one of the buttons' values.
+    const notAValue: 'paste' | undefined = sheet.value;
+
+    expect([sheetValue, promptValue, notAValue]).toHaveLength(3);
+  });
+});

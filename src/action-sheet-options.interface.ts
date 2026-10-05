@@ -5,7 +5,9 @@ import type {
   CloseResultInterface,
 } from './common-options.interface';
 
-export interface ActionSheetButtonInterface extends BaseButtonInterface {
+export interface ActionSheetButtonInterface<
+  V = unknown,
+> extends BaseButtonInterface<V> {
   onPress?: () => void;
 }
 
@@ -19,8 +21,10 @@ export interface ActionSheetAnchorInterface {
 /// screen, 'large' is the full height below the status bar.
 export type ActionSheetDetent = 'auto' | 'medium' | 'large';
 
-export interface ActionSheetCommonOptionsInterface extends BaseOptionsInterface {
-  options: ActionSheetButtonInterface[];
+export interface ActionSheetCommonOptionsInterface<
+  V = unknown,
+> extends BaseOptionsInterface {
+  options: ActionSheetButtonInterface<V>[];
   anchor?:
     | ActionSheetAnchorInterface
     | { current: ActionSheetAnchorInterface | null }
@@ -36,9 +40,14 @@ export interface ActionSheetAndroidOptionsInterface extends BaseAndroidOptionsIn
   anchorAlignment?: 'start' | 'center';
 }
 
-export interface ActionSheetOptionsInterface
+export interface ActionSheetOptionsInterface<V = unknown>
   extends
-    ActionSheetCommonOptionsInterface,
+    ActionSheetCommonOptionsInterface<V>,
     ActionSheetAndroidOptionsInterface {}
 
-export type ActionSheetResultInterface = CloseResultInterface;
+/// value is the value of the button that closed the sheet: the one picked,
+/// or the cancel button on a cancellation. Absent when that button has none,
+/// on a dismissal, and on a cancellation without a cancel button.
+export type ActionSheetResultInterface<V = unknown> = CloseResultInterface & {
+  value?: V;
+};

@@ -19,6 +19,9 @@
  * Prefer that over mockResolvedValueOnce, which replaces the implementation and
  * so skips onPress.
  *
+ * As for real, the result carries the value of the button it points at, when
+ * that button has one.
+ *
  * Each mocked sheet or prompt calls its onShow before resolving, since it
  * always "appears".
  *
@@ -36,15 +39,20 @@ const callOnShow = (options) => {
 };
 
 /// The same rule as the real module: the first button styled 'cancel', or -1,
-/// is a cancellation; any other index is a selection.
+/// is a cancellation; any other index is a selection. The result carries the
+/// value of the button it points at, if that button has one.
 const closeResult = (buttons, buttonIndex) => {
   if (buttonIndex == null)
     return { reason: 'dismissed', buttonIndex: undefined };
 
   const cancelIndex = buttons.findIndex((button) => button.style === 'cancel');
   const cancelled = buttonIndex < 0 || buttonIndex === cancelIndex;
+  const button = buttons[buttonIndex];
+  const result = { reason: cancelled ? 'cancelled' : 'selected', buttonIndex };
 
-  return { reason: cancelled ? 'cancelled' : 'selected', buttonIndex };
+  return button && button.value !== undefined
+    ? { ...result, value: button.value }
+    : result;
 };
 
 let nextButtonIndex;

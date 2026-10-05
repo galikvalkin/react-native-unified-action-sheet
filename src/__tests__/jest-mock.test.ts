@@ -3,9 +3,18 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 type Mock = {
   setNextButtonIndex: (index?: number) => void;
   showActionSheetWithOptions: (options: {
-    options: { label: string; style?: string; onPress?: () => void }[];
+    options: {
+      label: string;
+      style?: string;
+      value?: unknown;
+      onPress?: () => void;
+    }[];
     onShow?: () => void;
-  }) => Promise<{ reason: string; buttonIndex: number | undefined }>;
+  }) => Promise<{
+    reason: string;
+    buttonIndex: number | undefined;
+    value?: unknown;
+  }>;
   setNextPromptResult: (result?: {
     buttonIndex: number;
     text: string;
@@ -15,6 +24,7 @@ type Mock = {
     options: {
       label: string;
       style?: string;
+      value?: unknown;
       onPress?: (values: { text: string; password?: string }) => void;
     }[];
     onShow?: () => void;
@@ -23,6 +33,7 @@ type Mock = {
     buttonIndex: number | undefined;
     text: string;
     password?: string;
+    value?: unknown;
   }>;
   dismissActionSheet: { (): void; mock: { calls: unknown[] } };
   dismissAllActionSheets: { (): void; mock: { calls: unknown[] } };
@@ -136,5 +147,36 @@ describe('the shipped jest mock', () => {
       buttonIndex: undefined,
       text: '',
     });
+  });
+
+  it('carries the value of the button the result points at', async () => {
+    mock.setNextButtonIndex(1);
+    await expect(
+      mock.showActionSheetWithOptions({
+        options: [
+          { label: 'A', value: 'a' },
+          { label: 'Cancel', style: 'cancel', value: 'none' },
+        ],
+      })
+    ).resolves.toEqual({ reason: 'cancelled', buttonIndex: 1, value: 'none' });
+
+    mock.setNextPromptResult({ buttonIndex: 0, text: 'typed' });
+    await expect(
+      mock.showPromptWithOptions({ options: [{ label: 'OK', value: 42 }] })
+    ).resolves.toEqual({
+      reason: 'selected',
+      buttonIndex: 0,
+      text: 'typed',
+      value: 42,
+    });
+
+    // None on a dismissal, nor for a button without one.
+    await expect(
+      mock.showActionSheetWithOptions({ options: [{ label: 'A', value: 'a' }] })
+    ).resolves.not.toHaveProperty('value');
+    mock.setNextButtonIndex(0);
+    await expect(
+      mock.showActionSheetWithOptions({ options: [{ label: 'A' }] })
+    ).resolves.not.toHaveProperty('value');
   });
 });
