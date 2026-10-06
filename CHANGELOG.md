@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0]
+
 ### Added
 
 - `cancelable: false` on sheets and prompts: a backdrop tap, back, a swipe
@@ -44,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   style; iOS alerts, action sheets and prompts ignore them, since
   `UIAlertAction` has no public API for either.
 
-### Changed
+### Changed (breaking)
 
 - Colors (`tintColor`, `cancelButtonTintColor`, `destructiveColor`) are parsed
   by React Native's `processColor`, so they accept exactly what a `style`
@@ -67,7 +69,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its window (`WindowLeaked`) or could crash with `BadTokenException`. It now
   resolves as dismissed without showing anything; open dialogs are also closed
   as soon as the activity is destroyed.
-
 - Android: sheet and prompt dialog windows had no title for accessibility
   services to announce when they opened. Each window is now named after the
   sheet's title (or its message), without drawing anything new.
@@ -224,7 +225,8 @@ Initial release.
 - No `com.google.android.material` dependency, and no runtime dependencies —
   `react` and `react-native` are peers.
 
-[unreleased]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.4.0...HEAD
+[unreleased]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/galikvalkin/react-native-unified-action-sheet/compare/v0.1.1...v0.2.0
