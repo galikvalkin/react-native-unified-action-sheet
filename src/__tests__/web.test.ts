@@ -272,6 +272,34 @@ describe('web sheets', () => {
   });
 });
 
+describe('cancelable: false on the web', () => {
+  it('ignores Escape and a backdrop click, but not a button', async () => {
+    const result = sheets.showSheet(sheet({ cancelable: false }), () => {});
+
+    key('Escape');
+    Array.from(document.querySelectorAll<HTMLElement>('.uas-scrim'))
+      .pop()!
+      .click();
+    expect(document.querySelectorAll('.uas-open')).toHaveLength(1);
+
+    row('Share').click();
+    await expect(result).resolves.toBe(0);
+  });
+
+  it('still closes from code, and applies to prompts', async () => {
+    const result = sheets.showPrompt(
+      { buttons: [{ label: 'OK' }], cancelable: false },
+      () => {}
+    );
+
+    key('Escape');
+    expect(document.querySelectorAll('.uas-open')).toHaveLength(1);
+
+    sheets.dismissTop();
+    await expect(result).resolves.toMatchObject({ buttonIndex: -2 });
+  });
+});
+
 describe('web prompts', () => {
   const prompt = (overrides: Partial<PromptWire> = {}): PromptWire => ({
     buttons: [

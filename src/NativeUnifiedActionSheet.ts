@@ -28,6 +28,7 @@ export interface Spec extends TurboModule {
       destructiveColor?: number;
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
+      cancelable?: boolean;
       presentationStyle?: string;
       anchorAlignment?: string;
       detents?: string[];
@@ -68,6 +69,7 @@ export interface Spec extends TurboModule {
       destructiveColor?: number;
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
+      cancelable?: boolean;
     },
     onShow: () => void
   ): Promise<{ buttonIndex: number; text: string; password: string }>;

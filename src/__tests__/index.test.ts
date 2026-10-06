@@ -1096,3 +1096,33 @@ describe('button values', () => {
     expect([sheetValue, promptValue, notAValue]).toHaveLength(3);
   });
 });
+
+describe('cancelable', () => {
+  it('passes cancelable through to sheets and prompts', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('android');
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      cancelable: false,
+    });
+    await showPromptWithOptions({ options: buttons('OK'), cancelable: false });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ cancelable: false });
+    expect(
+      mockedNative().showPromptWithOptions.mock.calls[0]![0]
+    ).toMatchObject({ cancelable: false });
+  });
+
+  it('leaves it off the wire when unset', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+
+    await showActionSheetWithOptions({ options: buttons('A') });
+
+    expect(
+      mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
+    ).not.toHaveProperty('cancelable');
+  });
+});

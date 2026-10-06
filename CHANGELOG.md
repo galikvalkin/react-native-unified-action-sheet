@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `cancelable: false` on sheets and prompts: a backdrop tap, back, a swipe
+  down and Escape on the web no longer close it, so the user has to press a
+  button. Defaults to `true`, as in React Native's `Alert`.
+  `dismissActionSheet()` still closes it. On iOS's standard action sheet a tap
+  outside counts as the cancel button, so leave that button out to require a
+  choice there.
 - Web support, through React Native Web: the same calls show a sheet drawn in
   the page, with no provider or setup. Centered, anchored and bottom styles,
   prompts, colors, values, `onShow` and dismissal all work as on native;

@@ -119,6 +119,9 @@ internal interface SheetContent {
   val userInterfaceStyle: ForcedAppearance
   /// The sheet's own id for end-to-end tests, on its dialog content.
   val testID: String?
+  /// false: back, a backdrop tap and a swipe down do nothing; only a button
+  /// (or dismissActionSheet()) closes it.
+  val isCancelable: Boolean
 
   /// The cancel button's index, or null without one: what a backdrop tap or
   /// back resolves with.
@@ -141,6 +144,7 @@ internal data class SheetContentOptions(
   override val buttonTextAlignment: ButtonTextAlignment = ButtonTextAlignment.START,
   override val userInterfaceStyle: ForcedAppearance = ForcedAppearance.SYSTEM,
   override val testID: String? = null,
+  override val isCancelable: Boolean = true,
 ) : SheetContent {
   companion object {
     fun fromReadableMap(map: ReadableMap): SheetContentOptions {
@@ -161,6 +165,8 @@ internal data class SheetContentOptions(
         buttonTextAlignment = ButtonTextAlignment.fromWire(map.optString("buttonTextAlignment")),
         userInterfaceStyle = ForcedAppearance.fromWire(map.optString("userInterfaceStyle")),
         testID = map.optString("testID")?.takeIf { it.isNotEmpty() },
+        // Absent means cancelable, as in React Native's Alert.
+        isCancelable = !map.hasKey("cancelable") || map.isNull("cancelable") || map.getBoolean("cancelable"),
       )
     }
   }
