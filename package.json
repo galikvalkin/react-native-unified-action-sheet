@@ -1,7 +1,7 @@
 {
   "name": "react-native-unified-action-sheet",
   "version": "0.4.0",
-  "description": "Unified native action sheet for React Native, one API on iOS and Android",
+  "description": "Native action sheets, bottom sheets and text prompts for React Native: one API on iOS, Android and the web",
   "main": "./lib/commonjs/index.js",
   "sideEffects": false,
   "types": "./lib/typescript/commonjs/src/index.d.ts",
@@ -56,10 +56,18 @@
     "react-native",
     "ios",
     "android",
+    "web",
+    "react-native-web",
     "action-sheet",
     "actionsheet",
     "action-sheet-ios",
     "bottom-sheet",
+    "prompt",
+    "alert",
+    "alert-prompt",
+    "dialog",
+    "popover",
+    "expo",
     "turbomodule"
   ],
   "repository": {
