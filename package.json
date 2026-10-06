@@ -1,6 +1,6 @@
 {
   "name": "react-native-unified-action-sheet",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Native action sheets, bottom sheets and text prompts for React Native: one API on iOS, Android and the web",
   "main": "./lib/commonjs/index.js",
   "sideEffects": false,
