@@ -20,6 +20,7 @@ type Content = Pick<
   | 'buttonTextAlignment'
   | 'userInterfaceStyle'
   | 'testID'
+  | 'cancelable'
 >;
 
 type Rect = NonNullable<SheetWire['anchorRect']>;
@@ -320,7 +321,7 @@ const open = ({
 
     if (event.key === 'Escape') {
       event.preventDefault();
-      close(cancelIndex);
+      cancel();
     } else if (event.key === 'Tab') {
       // Keep focus inside the sheet while it is open.
       const items = focusables();
@@ -384,8 +385,14 @@ const open = ({
 
   const sheet: OpenSheet = { close };
 
+  // Escape and a backdrop click, unless cancelable is false: then only a
+  // button (or dismissTop/dismissAll) closes the sheet.
+  function cancel() {
+    if (content.cancelable !== false) close(cancelIndex);
+  }
+
   // A backdrop tap cancels, like Android's touch outside and iOS's dimmed area.
-  scrim.addEventListener('click', () => close(cancelIndex));
+  scrim.addEventListener('click', cancel);
   document.addEventListener('keydown', onKeyDown, true);
   window.addEventListener('resize', place);
 

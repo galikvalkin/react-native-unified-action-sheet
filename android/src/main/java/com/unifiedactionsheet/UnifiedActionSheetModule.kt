@@ -157,6 +157,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       }
     }
     dialog.callOnceWhenShown(onShow)
+    dialog.applyCancelable(options)
 
     dialog.show()
   }
@@ -201,11 +202,19 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       }
     }
     dialog.callOnceWhenShown(onShow)
+    dialog.applyCancelable(options)
 
     dialog.show()
   }
 
   private fun Activity.isClosing(): Boolean = isFinishing || isDestroyed
+
+  /// Last, after the presenter: Dialog.setCanceledOnTouchOutside(true), which
+  /// every presenter calls, turns cancelable back on. On Material's bottom
+  /// sheet, setCancelable(false) also stops the swipe down from hiding it.
+  private fun Dialog.applyCancelable(options: SheetContent) {
+    setCancelable(options.isCancelable)
+  }
 
   /// onShow: once the dialog's window is shown. A React Native Callback throws
   /// if invoked twice, hence the guard. A dialog that is never shown (the

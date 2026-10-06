@@ -46,6 +46,9 @@ static NSMutableDictionary *contentPayload(Options &options)
   }
   payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
   payload[@"testID"] = options.testID();
+  if (options.cancelable()) {
+    payload[@"cancelable"] = @(*options.cancelable());
+  }
 
   return payload;
 }

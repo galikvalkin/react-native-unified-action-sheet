@@ -98,6 +98,34 @@ const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
       },
     },
     {
+      // No cancel button either: on iOS's action sheet a tap outside counts as
+      // the cancel button, which cancelable cannot block.
+      label: 'Not cancelable',
+      options: {
+        title: 'Keep your changes?',
+        message:
+          'cancelable: false. A backdrop tap, back or Escape does nothing; pick a button.',
+        options: [
+          option('Keep'),
+          { ...option('Discard'), style: 'destructive' },
+        ],
+        cancelable: false,
+      },
+    },
+    {
+      label: 'Not cancelable, bottom sheet',
+      options: {
+        title: 'Keep your changes?',
+        message: 'cancelable: false. Swiping down does nothing either.',
+        presentationStyle: 'bottom',
+        options: [
+          option('Keep'),
+          { ...option('Discard'), style: 'destructive' },
+        ],
+        cancelable: false,
+      },
+    },
+    {
       label: 'Many options (scrolls)',
       options: {
         title: 'Long list',

@@ -32,6 +32,13 @@ export interface BaseOptionsInterface {
   cancelButtonTintColor?: string;
   destructiveColor?: string;
   userInterfaceStyle?: 'light' | 'dark';
+  /// false keeps the sheet or prompt open until a button is pressed: a
+  /// backdrop tap, back, a swipe down and Escape on the web do nothing.
+  /// Defaults to true, as in React Native's Alert. dismissActionSheet() still
+  /// closes it. iOS's standard action sheet is the exception: UIKit reports a
+  /// tap outside as a tap on its cancel button, so leave the cancel button out
+  /// to require a choice there.
+  cancelable?: boolean;
   /// Called once the sheet or prompt is on screen: on iOS after its
   /// presentation animation, on Android when its window is shown. Called at
   /// most once, before the promise resolves, and not at all if it never

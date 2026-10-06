@@ -56,6 +56,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: content.cancelButtonIndex,
+      isCancelable: content.isCancelable,
       onShow: onShow,
       completion: { index, _, _ in completion(index) }
     )
@@ -258,6 +259,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
 
     sheet.overrideUserInterfaceStyle = content.userInterfaceStyle
+    // Blocks the swipe down and the tap on the dimmed area alike.
+    sheet.isModalInPresentation = !content.isCancelable
     sheet.view.tintColor = content.tintColor
     sheet.view.accessibilityIdentifier = content.testID
 
@@ -295,6 +298,17 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
 
     present(presentation, on: parent)
+  }
+
+  /// cancelable: false. Asked before a tap outside an iPad popover closes it.
+  /// The bottom sheet refuses through isModalInPresentation instead, and
+  /// alerts never close that way.
+  public func presentationControllerShouldDismiss(
+    _ presentationController: UIPresentationController
+  ) -> Bool {
+    presentations.first {
+      $0.controller === presentationController.presentedViewController
+    }?.isCancelable ?? true
   }
 
   /// Interactive dismissal of a sheet: a swipe down or a tap on the dimmed
@@ -441,6 +455,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     /// A UIAlertController, or the bottom sheet on iPhone.
     let controller: UIViewController
     let cancelButtonIndex: Int
+    /// false: a tap outside an iPad popover does not close it.
+    let isCancelable: Bool
     /// Read at resolve time, not at creation: the values that matter are
     /// whatever is in the fields when the prompt closes. Sheets pass constants.
     private let currentValues: () -> (String, String)
@@ -452,12 +468,14 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     init(
       controller: UIViewController,
       cancelButtonIndex: Int,
+      isCancelable: Bool = true,
       currentValues: @escaping () -> (String, String) = { ("", "") },
       onShow: @escaping () -> Void,
       completion: @escaping (Int, String, String) -> Void
     ) {
       self.controller = controller
       self.cancelButtonIndex = cancelButtonIndex
+      self.isCancelable = isCancelable
       self.currentValues = currentValues
       self.onShow = onShow
       self.completion = completion
@@ -573,6 +591,9 @@ struct SheetContent {
   let userInterfaceStyle: UIUserInterfaceStyle
   /// The sheet's own accessibilityIdentifier, for end-to-end tests.
   let testID: String?
+  /// false: no backdrop tap or swipe closes it; only a button does. Absent
+  /// means true, as in React Native's Alert.
+  let isCancelable: Bool
 
   init(_ options: NSDictionary) {
     title = Self.text(options["title"])
@@ -589,6 +610,7 @@ struct SheetContent {
     default: userInterfaceStyle = .unspecified
     }
     testID = Self.text(options["testID"])
+    isCancelable = (options["cancelable"] as? NSNumber)?.boolValue ?? true
   }
 
   /// What a backdrop tap or swipe resolves with: the cancel button's index, or
