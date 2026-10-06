@@ -307,7 +307,7 @@ describe('promise API', () => {
   });
 
   it('resolves as dismissed on unsupported platforms', async () => {
-    const { showActionSheetWithOptions } = loadIndex('web' as 'ios');
+    const { showActionSheetWithOptions } = loadIndex('windows' as 'ios');
 
     await expect(
       showActionSheetWithOptions({ options: buttons('A') })
@@ -326,7 +326,7 @@ describe('dismissAllActionSheets', () => {
   });
 
   it('is a no-op on unsupported platforms', () => {
-    const { dismissAllActionSheets } = loadIndex('web' as 'ios');
+    const { dismissAllActionSheets } = loadIndex('windows' as 'ios');
 
     dismissAllActionSheets();
 
@@ -505,7 +505,7 @@ describe('showPromptWithOptions', () => {
   });
 
   it('resolves as dismissed on an unsupported platform without calling native', async () => {
-    const { showPromptWithOptions } = loadIndex('web' as 'ios');
+    const { showPromptWithOptions } = loadIndex('windows' as 'ios');
 
     await expect(
       showPromptWithOptions({ options: [{ label: 'OK' }] })
@@ -794,7 +794,7 @@ describe('onShow', () => {
 
   it('is never called on an unsupported platform', async () => {
     const { showActionSheetWithOptions, showPromptWithOptions } = loadIndex(
-      'web' as 'ios'
+      'windows' as 'ios'
     );
     const onShow = jest.fn();
 

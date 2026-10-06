@@ -1,6 +1,7 @@
 import { Platform, processColor } from 'react-native';
 
-import type { Spec } from './NativeUnifiedActionSheet';
+import * as backend from './backend';
+import { DISMISSED_BY_API } from './wire';
 import type {
   ActionSheetOptionsInterface,
   ActionSheetResultInterface,
@@ -40,8 +41,6 @@ export type {
   ActionSheetOptionsInterface,
   ActionSheetResultInterface,
 } from './action-sheet-options.interface';
-
-const DISMISSED_BY_API = -2;
 
 /// One button as it crosses the bridge: the public shape minus onPress, with
 /// the "only the first counts" rules for cancel and preferred already applied,
@@ -99,9 +98,6 @@ const toWireColors = (colors: {
 
   return wire;
 };
-
-const nativeModule = (): Spec =>
-  require('./NativeUnifiedActionSheet').default as Spec;
 
 const toWireOptions = ({
   options,
@@ -206,8 +202,8 @@ const showWithNativeModule = (
   const cancelButtonIndex = cancelIndexOf(options);
 
   return (
-    nativeModule()
-      .showActionSheetWithOptions(options, onShow)
+    backend
+      .showSheet(options, onShow)
       // A native failure reads as a cancellation rather than a rejection.
       .catch(() => cancelButtonIndex ?? -1)
       .then((buttonIndex) => toCloseResult(buttonIndex, cancelButtonIndex))
@@ -227,7 +223,7 @@ const warnIfBottomUnavailable = (
     warnedMaterialDisabled ||
     Platform.OS !== 'android' ||
     presentationStyle !== 'bottom' ||
-    nativeModule().getConstants().isMaterialEnabled
+    backend.isBottomSheetAvailable()
   ) {
     return;
   }
@@ -309,7 +305,7 @@ export const showActionSheetWithOptions = <const V = unknown,>(
     return withValue(result, options.options);
   };
 
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+  if (!backend.isSupported) {
     return Promise.resolve(DISMISSED);
   }
 
@@ -330,17 +326,13 @@ export const showActionSheetWithOptions = <const V = unknown,>(
 };
 
 export const dismissActionSheet = (): void => {
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    nativeModule().dismissActionSheet();
-  }
+  if (backend.isSupported) backend.dismissTop();
 };
 
 /// Closes every open sheet, not just the top-most one. Each resolves as
 /// 'dismissed', exactly as with dismissActionSheet().
 export const dismissAllActionSheets = (): void => {
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    nativeModule().dismissAllActionSheets();
-  }
+  if (backend.isSupported) backend.dismissAll();
 };
 
 /// A prompt is the sheet's centered dialog with a text field: iOS presents a
@@ -371,12 +363,12 @@ export const showPromptWithOptions = <const V = unknown,>(
   const cancelButtonIndex = cancelIndexOf(wire);
   const hasPassword = wire.type === 'login-password';
 
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+  if (!backend.isSupported) {
     return Promise.resolve({ ...DISMISSED, text: '' });
   }
 
-  return nativeModule()
-    .showPromptWithOptions(wire, () => onShow?.())
+  return backend
+    .showPrompt(wire, () => onShow?.())
     .catch(() => ({
       buttonIndex: cancelButtonIndex ?? -1,
       text: '',

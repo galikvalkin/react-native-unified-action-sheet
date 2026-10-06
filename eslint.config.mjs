@@ -29,6 +29,7 @@ export default defineConfig([
       'lib/',
       '.claude/',
       'example-legacy/',
+      'example-web/',
     ],
   },
 ]);

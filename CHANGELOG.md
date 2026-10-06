@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Web support, through React Native Web: the same calls show a sheet drawn in
+  the page, with no provider or setup. Centered, anchored and bottom styles,
+  prompts, colors, values, `onShow` and dismissal all work as on native;
+  Escape and a backdrop click cancel, focus stays inside the sheet, and
+  `testID` maps to `data-testid`. Bundlers that prefer `.web.js` files (Expo,
+  and React Native Web's recommended setup) pick it up automatically. Native
+  bundles don't include it. See [Web](docs/web.md).
 - `value` on buttons: the result carries the value of the button that closed
   the sheet or prompt, typed from the buttons with no annotations (`value:
   'share'` makes `result.value` `'share' | …`). Branch on what was picked

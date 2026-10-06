@@ -10,6 +10,7 @@ This project is a monorepo managed using [Yarn workspaces](https://yarnpkg.com/f
 
 - The library package in the root directory.
 - An example app in the `example/` directory (latest React Native, new architecture).
+- A web example in the `example-web/` directory: the same demo screen on React Native Web, bundled with Vite. Like `example-legacy/`, it is not part of the Yarn workspace: run `npm install`, then `npm run dev`, inside `example-web/`. It uses the library straight from `src/`, so edits reload without a build.
 - A second example app in the `example-legacy/` directory (React Native 0.81.x) used to verify old- and new-architecture compatibility. It is **deliberately NOT part of the Yarn workspace**: install it with `npm install` inside `example-legacy/` (it consumes the library via a `file:..` symlink). Toggle the architecture via `newArchEnabled` in `example-legacy/android/gradle.properties` and run `cd example-legacy/android && ./gradlew clean` after toggling. For iOS on the old architecture, run `RCT_NEW_ARCH_ENABLED=0 bundle exec pod install` in `example-legacy/ios`.
 
 To get started with the project, make sure you have the correct version of [Node.js](https://nodejs.org/) installed. See the [`.nvmrc`](./.nvmrc) file for the version used in this project.
