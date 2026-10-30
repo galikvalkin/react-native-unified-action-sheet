@@ -1,8 +1,8 @@
 import { Children, forwardRef, useMemo, useRef, useState } from 'react';
 import type { ComponentRef, ReactNode } from 'react';
 import {
+  Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,7 +10,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import Modal from 'react-native-modal';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   dismissActionSheet,
   dismissAllActionSheets,
@@ -534,7 +534,7 @@ export default function ActionSheetDemoApp() {
   };
 
   const showFromModal = async () => {
-    // react-native-modal renders in its own window, above the activity. The
+    // A Modal renders in its own window, above the activity. The
     // sheet is a dialog owned by the activity, so this is where a z-order bug
     // would show up: the sheet must appear ON TOP of the still-open modal,
     // not behind it.
@@ -563,113 +563,120 @@ export default function ActionSheetDemoApp() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: palette.background }]}
-    >
-      <StatusBar
-        barStyle={palette === palettes.dark ? 'light-content' : 'dark-content'}
-        backgroundColor={palette.background}
-      />
-      {/* Outside the ScrollView so the result of whatever you just tapped
-          stays visible instead of scrolling away with the buttons. */}
-      <View style={[styles.header, { borderBottomColor: palette.border }]}>
-        <Text style={[styles.heading, { color: palette.text }]}>
-          Unified Action Sheet
-        </Text>
-        <Text
-          style={[styles.result, { color: palette.text }]}
-          numberOfLines={2}
-        >
-          {lastResult}
-        </Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Section title="Sheets" defaultExpanded>
-          {demoCases.map((demo) => (
-            <DemoButton
-              key={demo.label}
-              label={demo.label}
-              onPress={() => show(demo)}
-            />
-          ))}
-        </Section>
-
-        <Section title="Prompts">
-          <DemoButton
-            label="Prompt with a text field"
-            onPress={showPrompt}
-            tone="alt"
-          />
-          <DemoButton
-            label="Secure numeric prompt"
-            onPress={showSecurePrompt}
-            tone="alt"
-          />
-          <DemoButton
-            label="Sign in (login and password)"
-            onPress={showLoginPrompt}
-            tone="alt"
-          />
-        </Section>
-
-        <Section title="Anchoring">
-          <DemoButton
-            ref={anchorRef}
-            label="Anchored to this button"
-            onPress={showAnchored}
-            tone="alt"
-          />
-        </Section>
-
-        <Section title="Stacking and dismissal">
-          <DemoButton
-            label="Rapid double-open"
-            onPress={showTwice}
-            tone="alt"
-          />
-          <DemoButton
-            label="Open two, then dismiss all"
-            onPress={showTwoAndDismissAll}
-            tone="alt"
-          />
-          <DemoButton
-            label="Open then dismiss programmatically"
-            onPress={showAndDismiss}
-            tone="alt"
-          />
-        </Section>
-
-        <Section title="Interop">
-          <DemoButton
-            label="Open a react-native-modal"
-            onPress={() => setModalVisible(true)}
-            tone="alt"
-          />
-        </Section>
-      </ScrollView>
-      <Modal
-        useNativeDriver
-        isVisible={isModalVisible}
-        onBackdropPress={() => setModalVisible(false)}
-        onBackButtonPress={() => setModalVisible(false)}
+    <SafeAreaProvider>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: palette.background }]}
       >
-        <View style={[styles.modalCard, { backgroundColor: palette.card }]}>
-          <Text style={[styles.modalTitle, { color: palette.text }]}>
-            A react-native-modal
+        <StatusBar
+          barStyle={
+            palette === palettes.dark ? 'light-content' : 'dark-content'
+          }
+        />
+        {/* Outside the ScrollView so the result of whatever you just tapped
+          stays visible instead of scrolling away with the buttons. */}
+        <View style={[styles.header, { borderBottomColor: palette.border }]}>
+          <Text style={[styles.heading, { color: palette.text }]}>
+            Unified Action Sheet
           </Text>
-          <Text style={[styles.modalText, { color: palette.secondaryText }]}>
-            Open the sheet from here. It must appear above this modal, and this
-            modal must still be open underneath once the sheet closes.
+          <Text
+            style={[styles.result, { color: palette.text }]}
+            numberOfLines={2}
+          >
+            {lastResult}
           </Text>
-          <DemoButton label="Open action sheet" onPress={showFromModal} />
-          <DemoButton
-            label="Close modal"
-            onPress={() => setModalVisible(false)}
-            tone="alt"
-          />
         </View>
-      </Modal>
-    </SafeAreaView>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Section title="Sheets" defaultExpanded>
+            {demoCases.map((demo) => (
+              <DemoButton
+                key={demo.label}
+                label={demo.label}
+                onPress={() => show(demo)}
+              />
+            ))}
+          </Section>
+
+          <Section title="Prompts">
+            <DemoButton
+              label="Prompt with a text field"
+              onPress={showPrompt}
+              tone="alt"
+            />
+            <DemoButton
+              label="Secure numeric prompt"
+              onPress={showSecurePrompt}
+              tone="alt"
+            />
+            <DemoButton
+              label="Sign in (login and password)"
+              onPress={showLoginPrompt}
+              tone="alt"
+            />
+          </Section>
+
+          <Section title="Anchoring">
+            <DemoButton
+              ref={anchorRef}
+              label="Anchored to this button"
+              onPress={showAnchored}
+              tone="alt"
+            />
+          </Section>
+
+          <Section title="Stacking and dismissal">
+            <DemoButton
+              label="Rapid double-open"
+              onPress={showTwice}
+              tone="alt"
+            />
+            <DemoButton
+              label="Open two, then dismiss all"
+              onPress={showTwoAndDismissAll}
+              tone="alt"
+            />
+            <DemoButton
+              label="Open then dismiss programmatically"
+              onPress={showAndDismiss}
+              tone="alt"
+            />
+          </Section>
+
+          <Section title="Interop">
+            <DemoButton
+              label="Open a Modal"
+              onPress={() => setModalVisible(true)}
+              tone="alt"
+            />
+          </Section>
+        </ScrollView>
+        <Modal
+          transparent
+          animationType="fade"
+          visible={isModalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { backgroundColor: palette.card }]}>
+              <Text style={[styles.modalTitle, { color: palette.text }]}>
+                A Modal
+              </Text>
+              <Text
+                style={[styles.modalText, { color: palette.secondaryText }]}
+              >
+                Open the sheet from here. It must appear above this modal, and
+                this modal must still be open underneath once the sheet closes.
+              </Text>
+              <DemoButton label="Open action sheet" onPress={showFromModal} />
+              <DemoButton
+                label="Close modal"
+                onPress={() => setModalVisible(false)}
+                tone="alt"
+              />
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -732,6 +739,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalCard: {
     borderRadius: 12,

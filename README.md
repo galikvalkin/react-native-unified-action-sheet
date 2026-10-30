@@ -107,7 +107,8 @@ await showPromptWithOptions({
 | React Native | Old architecture | New architecture |
 | --- | --- | --- |
 | 0.81.x | ✅ Android verified | ✅ Android verified |
-| 0.85.x (latest line) | n/a (removed in RN 0.82+) | ✅ verified (iOS + Android) |
+| 0.85.x | n/a (removed in RN 0.82+) | ✅ verified (iOS + Android) |
+| 0.88.x (latest line) | n/a (removed in RN 0.82+) | ✅ Android verified |
 
 **iOS on RN 0.81 is unverified.** The pod integrates, but React Native 0.81 itself does not build under Xcode 26 — a toolchain clash unrelated to this library.
 

@@ -27,13 +27,13 @@ export default defineConfig({
       '.json',
     ],
     // ../example-shared and ../src sit outside this folder; one copy of each.
-    dedupe: ['react', 'react-dom', 'react-native-web', 'react-native-modal'],
+    dedupe: [
+      'react',
+      'react-dom',
+      'react-native-web',
+      'react-native-safe-area-context',
+    ],
   },
-  // React Native packages often ship JSX in .js files (react-native-modal's
-  // react-native-animatable does); parse .js as JSX, in the build and in the
-  // dev server's dependency prebundling.
-  build: { rolldownOptions: { moduleTypes: { '.js': 'jsx' } } },
-  optimizeDeps: { rolldownOptions: { moduleTypes: { '.js': 'jsx' } } },
   define: {
     __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
   },
