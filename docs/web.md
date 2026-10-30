@@ -19,11 +19,15 @@ The library ships a web implementation in `.web.js` files, next to the native on
 
 ```js
 // vite.config.js (webpack's resolve.extensions takes the same list)
+const extensions = ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js'];
+
 export default {
   resolve: {
     alias: { 'react-native': 'react-native-web' },
-    extensions: ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js'],
+    extensions,
   },
+  // Vite's dev server prebundles dependencies without resolve.extensions.
+  optimizeDeps: { rolldownOptions: { resolve: { extensions } } },
 };
 ```
 
