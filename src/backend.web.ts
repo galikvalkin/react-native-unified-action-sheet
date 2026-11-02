@@ -25,3 +25,6 @@ export const showPrompt = (
 export const dismissTop = (): void => sheets.dismissTop();
 
 export const dismissAll = (): void => sheets.dismissAll();
+
+export const dismissSheet = (sheetId: number): void =>
+  sheets.dismissSheet(sheetId);

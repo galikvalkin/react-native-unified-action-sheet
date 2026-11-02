@@ -49,6 +49,9 @@ static NSMutableDictionary *contentPayload(Options &options)
   if (options.cancelable()) {
     payload[@"cancelable"] = @(*options.cancelable());
   }
+  if (options.sheetId()) {
+    payload[@"sheetId"] = @(*options.sheetId());
+  }
 
   return payload;
 }
@@ -157,6 +160,13 @@ RCT_EXPORT_METHOD(dismissActionSheet)
 {
   dispatch_async(dispatch_get_main_queue(), ^{
     [UnifiedActionSheetImpl.shared dismiss];
+  });
+}
+
+RCT_EXPORT_METHOD(dismissSheet : (double)sheetId)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [UnifiedActionSheetImpl.shared dismissSheetWithId:(NSInteger)sheetId];
   });
 }
 

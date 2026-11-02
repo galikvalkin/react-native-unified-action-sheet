@@ -67,6 +67,7 @@ if (value === 'share') share();
 | `anchor` | ref, or anything with `measureInWindow` | ✅ | ✅ | What an `'anchored'` sheet attaches to. Without a measurable anchor (or one that does not answer within 500 ms, e.g. because it unmounted) it falls back to a centered dialog. Ignored by `'bottom'`. |
 | `userInterfaceStyle` | `'light' \| 'dark'` | ✅ | ✅ | Forces the appearance. Defaults to the system setting. |
 | `cancelable` | `boolean` | ✅ | ✅ | `false` keeps the sheet open until a button is pressed: a backdrop tap, back and a swipe down do nothing. Defaults to `true`, as in React Native's `Alert`. `dismissActionSheet()` still closes it. iOS's standard action sheet is the exception: UIKit reports a tap outside as its cancel button, so leave the cancel button out to require a choice there. Prompts take it too. |
+| `signal` | `AbortSignal` | ✅ | ✅ | Closes this sheet when aborted; it resolves as `'dismissed'`. See [Closing with a signal](behavior.md#closing-with-a-signal). |
 | `tintColor` | `string` | ✅ | ✅ | Text color of non-destructive buttons. Any color React Native accepts: `'#RGB'`, `'#RRGGBB'`, `'#RRGGBBAA'`, `'rgb()'`/`'rgba()'`, `'hsl()'` or a named color. An unparseable value is ignored. Same for the two below. |
 | `cancelButtonTintColor` | `string` | ✅ | ✅ | Text color of the cancel button; overrides `tintColor` for that row. |
 | `destructiveColor` | `string` | ✅ | ✅ | Destructive row color, instead of Android's palette error color or iOS system red. |
@@ -106,7 +107,7 @@ const anchorRef = useRef<View>(null);
 
 ## Prompt options
 
-`showPromptWithOptions()` takes the sheet's `title`, `message`, colors, `userInterfaceStyle`, `cancelable`, `buttonTextAlignment` and `onShow`, plus:
+`showPromptWithOptions()` takes the sheet's `title`, `message`, colors, `userInterfaceStyle`, `cancelable`, `signal`, `buttonTextAlignment` and `onShow`, plus:
 
 | Option | Type | Description |
 | --- | --- | --- |

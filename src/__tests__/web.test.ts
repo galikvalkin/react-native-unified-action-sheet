@@ -300,6 +300,23 @@ describe('cancelable: false on the web', () => {
   });
 });
 
+describe('dismissSheet on the web', () => {
+  it('closes that sheet only, even under another, and ignores unknown ids', async () => {
+    const lower = sheets.showSheet(sheet({ sheetId: 1 }), () => {});
+    const upper = sheets.showSheet(sheet({ sheetId: 2 }), () => {});
+
+    sheets.dismissSheet(99);
+    expect(document.querySelectorAll('.uas-open')).toHaveLength(2);
+
+    sheets.dismissSheet(1);
+    await expect(lower).resolves.toBe(-2);
+    expect(document.querySelectorAll('.uas-open')).toHaveLength(1);
+
+    sheets.dismissSheet(2);
+    await expect(upper).resolves.toBe(-2);
+  });
+});
+
 describe('web prompts', () => {
   const prompt = (overrides: Partial<PromptWire> = {}): PromptWire => ({
     buttons: [
@@ -384,6 +401,25 @@ describe('web prompts', () => {
 describe('the public API on web', () => {
   type IndexModule = typeof import('../index');
   const load = (): IndexModule => require('../index');
+
+  it('closes the sheet when its signal aborts', async () => {
+    const { showActionSheetWithOptions } = load();
+    const controller = new AbortController();
+
+    const result = showActionSheetWithOptions({
+      options: [{ label: 'Share', value: 'share' }],
+      signal: controller.signal,
+    });
+    await Promise.resolve();
+    expect(row('Share')).toBeDefined();
+
+    controller.abort();
+
+    await expect(result).resolves.toEqual({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+    });
+  });
 
   it('shows the sheet and resolves the value, running onPress', async () => {
     const { showActionSheetWithOptions } = load();

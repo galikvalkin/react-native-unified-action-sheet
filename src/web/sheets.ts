@@ -21,6 +21,7 @@ type Content = Pick<
   | 'userInterfaceStyle'
   | 'testID'
   | 'cancelable'
+  | 'sheetId'
 >;
 
 type Rect = NonNullable<SheetWire['anchorRect']>;
@@ -31,6 +32,7 @@ type Layout =
   | { kind: 'anchored'; rect: Rect; alignment: string | undefined };
 
 interface OpenSheet {
+  sheetId: number | undefined;
   close: (index: number) => void;
 }
 
@@ -383,7 +385,7 @@ const open = ({
     onClose(index);
   };
 
-  const sheet: OpenSheet = { close };
+  const sheet: OpenSheet = { sheetId: content.sheetId, close };
 
   // Escape and a backdrop click, unless cancelable is false: then only a
   // button (or dismissTop/dismissAll) closes the sheet.
@@ -526,6 +528,10 @@ export const showPrompt = (
 
 export const dismissTop = (): void => {
   stack[stack.length - 1]?.close(DISMISSED_BY_API);
+};
+
+export const dismissSheet = (sheetId: number): void => {
+  stack.find((sheet) => sheet.sheetId === sheetId)?.close(DISMISSED_BY_API);
 };
 
 export const dismissAll = (): void => {

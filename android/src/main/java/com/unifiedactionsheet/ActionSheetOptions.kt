@@ -122,6 +122,8 @@ internal interface SheetContent {
   /// false: back, a backdrop tap and a swipe down do nothing; only a button
   /// (or dismissActionSheet()) closes it.
   val isCancelable: Boolean
+  /// Set when JS passed a signal: what dismissSheet() closes this one by.
+  val sheetId: Int?
 
   /// The cancel button's index, or null without one: what a backdrop tap or
   /// back resolves with.
@@ -145,6 +147,7 @@ internal data class SheetContentOptions(
   override val userInterfaceStyle: ForcedAppearance = ForcedAppearance.SYSTEM,
   override val testID: String? = null,
   override val isCancelable: Boolean = true,
+  override val sheetId: Int? = null,
 ) : SheetContent {
   companion object {
     fun fromReadableMap(map: ReadableMap): SheetContentOptions {
@@ -167,6 +170,7 @@ internal data class SheetContentOptions(
         testID = map.optString("testID")?.takeIf { it.isNotEmpty() },
         // Absent means cancelable, as in React Native's Alert.
         isCancelable = !map.hasKey("cancelable") || map.isNull("cancelable") || map.getBoolean("cancelable"),
+        sheetId = if (map.hasKey("sheetId") && !map.isNull("sheetId")) map.getInt("sheetId") else null,
       )
     }
   }

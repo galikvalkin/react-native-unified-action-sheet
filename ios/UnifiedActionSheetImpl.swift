@@ -56,6 +56,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: content.cancelButtonIndex,
+      sheetId: content.sheetId,
       isCancelable: content.isCancelable,
       onShow: onShow,
       completion: { index, _, _ in completion(index) }
@@ -142,6 +143,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: alert,
       cancelButtonIndex: content.cancelButtonIndex,
+      sheetId: content.sheetId,
       // Weak, or the presentation would retain the controller it is stored on.
       currentValues: { [weak alert] in
         let fields = alert?.textFields ?? []
@@ -243,6 +245,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let presentation = Presentation(
       controller: sheet,
       cancelButtonIndex: content.cancelButtonIndex,
+      sheetId: content.sheetId,
       onShow: onShow,
       completion: { index, _, _ in completion(index) }
     )
@@ -375,6 +378,35 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     }
   }
 
+  /// Closes the sheet JS opened with a signal. Sheets stacked above it close
+  /// with it and resolve the same way: UIKit dismisses from a presenter
+  /// upwards, and can't remove one from the middle of a stack.
+  @objc(dismissSheetWithId:) public func dismissSheet(id: Int) {
+    guard let index = presentations.firstIndex(where: { $0.sheetId == id }) else { return }
+
+    let closing = Array(presentations[index...])
+
+    // Still waiting for a transition to end, so not on screen: nothing to
+    // dismiss, and UIKit would not call the completion below.
+    guard let presenter = closing[0].controller.presentingViewController else {
+      return closing.forEach { finish($0, index: Self.dismissedByApi) }
+    }
+
+    // UIKit ignores a dismiss during a presentation, and would never call the
+    // completion below, so wait for it to end.
+    if let coordinator = closing.last?.controller.transitionCoordinator {
+      coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+        DispatchQueue.main.async { self?.dismissSheet(id: id) }
+      }
+
+      return
+    }
+
+    presenter.dismiss(animated: true) { [weak self] in
+      closing.forEach { self?.finish($0, index: Self.dismissedByApi) }
+    }
+  }
+
   /// Interactive dismissal only — a programmatic dismiss() does not call this,
   /// so the -2 sentinel it resolves with is never overwritten here.
   public func popoverPresentationControllerDidDismissPopover(
@@ -457,6 +489,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     let cancelButtonIndex: Int
     /// false: a tap outside an iPad popover does not close it.
     let isCancelable: Bool
+    /// Set when JS passed a signal: what dismissSheet(id:) closes this one by.
+    let sheetId: Int?
     /// Read at resolve time, not at creation: the values that matter are
     /// whatever is in the fields when the prompt closes. Sheets pass constants.
     private let currentValues: () -> (String, String)
@@ -468,6 +502,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
     init(
       controller: UIViewController,
       cancelButtonIndex: Int,
+      sheetId: Int? = nil,
       isCancelable: Bool = true,
       currentValues: @escaping () -> (String, String) = { ("", "") },
       onShow: @escaping () -> Void,
@@ -476,6 +511,7 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       self.controller = controller
       self.cancelButtonIndex = cancelButtonIndex
       self.isCancelable = isCancelable
+      self.sheetId = sheetId
       self.currentValues = currentValues
       self.onShow = onShow
       self.completion = completion
@@ -594,6 +630,8 @@ struct SheetContent {
   /// false: no backdrop tap or swipe closes it; only a button does. Absent
   /// means true, as in React Native's Alert.
   let isCancelable: Bool
+  /// Set when JS passed a signal: what dismissSheet(id:) closes this one by.
+  let sheetId: Int?
 
   init(_ options: NSDictionary) {
     title = Self.text(options["title"])
@@ -611,6 +649,7 @@ struct SheetContent {
     }
     testID = Self.text(options["testID"])
     isCancelable = (options["cancelable"] as? NSNumber)?.boolValue ?? true
+    sheetId = (options["sheetId"] as? NSNumber)?.intValue
   }
 
   /// What a backdrop tap or swipe resolves with: the cancel button's index, or

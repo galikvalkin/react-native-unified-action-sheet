@@ -22,6 +22,9 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
 
   private val dismissedByApi = mutableSetOf<Dialog>()
 
+  /// The dialogs JS can close by id: those opened with a signal.
+  private val dialogsBySheetId = mutableMapOf<Int, Dialog>()
+
   override fun showActionSheetWithOptions(options: ReadableMap, onShow: Callback, promise: Promise) {
     val parsed =
       ActionSheetOptions.fromReadableMap(
@@ -87,6 +90,15 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  override fun dismissSheet(sheetId: Double) {
+    UiThreadUtil.runOnUiThread {
+      dialogsBySheetId[sheetId.toInt()]?.let { dialog ->
+        dismissedByApi.add(dialog)
+        dialog.dismiss()
+      }
+    }
+  }
+
   override fun onHostResume() = Unit
 
   override fun onHostPause() = Unit
@@ -111,6 +123,7 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
     openDialogs.toList().forEach { it.dismiss() }
     openDialogs.clear()
     dismissedByApi.clear()
+    dialogsBySheetId.clear()
   }
 
   private fun presentSheet(
@@ -146,10 +159,12 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       resolveOnce(index)
     }
     openDialogs.add(dialog)
+    options.sheetId?.let { dialogsBySheetId[it] = dialog }
 
     dialog.setOnCancelListener { resolveOnce(options.cancelButtonIndex) }
     dialog.setOnDismissListener {
       openDialogs.remove(dialog)
+      options.sheetId?.let(dialogsBySheetId::remove)
       if (dismissedByApi.remove(dialog)) {
         resolveOnce(DISMISSED_BY_API)
       } else {
@@ -189,12 +204,14 @@ class UnifiedActionSheetModule(reactContext: ReactApplicationContext) :
       resolveOnce(index, values)
     }
     openDialogs.add(dialog)
+    options.sheetId?.let { dialogsBySheetId[it] = dialog }
 
     // Read the field at dismissal time: what the user typed survives a backdrop
     // tap, so a caller can still recover a draft.
     dialog.setOnCancelListener { resolveOnce(options.cancelButtonIndex, currentValues()) }
     dialog.setOnDismissListener {
       openDialogs.remove(dialog)
+      options.sheetId?.let(dialogsBySheetId::remove)
       if (dismissedByApi.remove(dialog)) {
         resolveOnce(DISMISSED_BY_API, currentValues())
       } else {

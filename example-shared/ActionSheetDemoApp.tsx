@@ -98,6 +98,21 @@ export default function ActionSheetDemoApp() {
               onPress={sheets.showAndDismiss}
               tone="alt"
             />
+            <DemoButton
+              label="Abort with a signal"
+              onPress={sheets.showAndAbort}
+              tone="alt"
+            />
+            <DemoButton
+              label="Abort while opening"
+              onPress={sheets.showAndAbortWhileOpening}
+              tone="alt"
+            />
+            <DemoButton
+              label="Abort the lower of two"
+              onPress={sheets.showTwoAndAbortLower}
+              tone="alt"
+            />
           </Section>
 
           <Section title="Interop">

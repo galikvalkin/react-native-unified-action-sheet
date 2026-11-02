@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `signal` on sheets and prompts: an `AbortSignal` that closes that one sheet,
+  for example when its screen unmounts. It resolves as `'dismissed'`, and an
+  already aborted signal shows nothing. On iOS, sheets stacked above it close
+  with it, since UIKit can't remove one from the middle of a stack.
+
 ## [0.5.0]
 
 ### Added

@@ -86,6 +86,58 @@ export const createSheetActions = (
     }
   };
 
+  const abortAfter = (controller: AbortController, ms: number) =>
+    setTimeout(() => controller.abort(), ms);
+
+  const showAndAbort = async () => {
+    const controller = new AbortController();
+    abortAfter(controller, 1500);
+
+    const result = await showActionSheetWithOptions({
+      title: 'Aborted by a signal',
+      message: 'Closing in 1.5s via controller.abort().',
+      signal: controller.signal,
+      options: [{ label: 'Share' }, { label: 'Cancel', style: 'cancel' }],
+    });
+
+    report(`Signal → ${result.reason}`);
+  };
+
+  const showAndAbortWhileOpening = async () => {
+    const controller = new AbortController();
+    abortAfter(controller, 50);
+
+    const result = await showActionSheetWithOptions({
+      title: 'Aborted while opening',
+      signal: controller.signal,
+      options: [{ label: 'Share' }, { label: 'Cancel', style: 'cancel' }],
+    });
+
+    report(`Signal while opening → ${result.reason}`);
+  };
+
+  const showTwoAndAbortLower = async () => {
+    const controller = new AbortController();
+    const lower = showActionSheetWithOptions({
+      title: 'Lower sheet',
+      message: 'Has the signal.',
+      signal: controller.signal,
+      options: [{ label: 'Share' }, { label: 'Cancel', style: 'cancel' }],
+    });
+    await delay(600);
+
+    const upper = showActionSheetWithOptions({
+      title: 'Upper sheet',
+      message:
+        'The lower sheet aborts in 1.5s. This one stays open on Android and web, and closes with it on iOS.',
+      options: [{ label: 'Keep' }, { label: 'Cancel', style: 'cancel' }],
+    });
+    abortAfter(controller, 1500);
+
+    const results = await Promise.all([lower, upper]);
+    report(`Abort lower → ${results.map((r) => r.reason).join(', ')}`);
+  };
+
   const showAnchored = async () => {
     const result = await showActionSheetWithOptions({
       title: 'Anchored presentation',
@@ -140,6 +192,9 @@ export const createSheetActions = (
     showTwice,
     showTwoAndDismissAll,
     showAndDismiss,
+    showAndAbort,
+    showAndAbortWhileOpening,
+    showTwoAndAbortLower,
     showAnchored,
     showFromModal,
   };

@@ -33,6 +33,7 @@ jest.mock('../NativeUnifiedActionSheet', () => {
       getConstants: jest.fn(() => ({ isMaterialEnabled: mockMaterialEnabled })),
       dismissActionSheet: jest.fn(),
       dismissAllActionSheets: jest.fn(),
+      dismissSheet: jest.fn(),
     },
   };
 });
@@ -47,6 +48,7 @@ type MockedNative = {
   getConstants: AnyMock;
   dismissActionSheet: AnyMock;
   dismissAllActionSheets: AnyMock;
+  dismissSheet: AnyMock;
 };
 
 const loadIndex = (os: 'ios' | 'android'): IndexModule => {
@@ -1124,5 +1126,141 @@ describe('cancelable', () => {
     expect(
       mockedNative().showActionSheetWithOptions.mock.calls[0]![0]
     ).not.toHaveProperty('cancelable');
+  });
+});
+
+describe('signal', () => {
+  type Deferred = { promise: Promise<number>; resolve: (n: number) => void };
+  const deferred = (): Deferred => {
+    let resolve!: (n: number) => void;
+    const promise = new Promise<number>((r) => {
+      resolve = r;
+    });
+
+    return { promise, resolve };
+  };
+  const flush = async () => {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+
+  it('keeps the signal off the wire and closes that sheet by id on abort', async () => {
+    const { showActionSheetWithOptions } = loadIndex('android');
+    const controller = new AbortController();
+    const pending = deferred();
+    mockNativeResponse = pending.promise;
+
+    const result = showActionSheetWithOptions({
+      options: buttons('A'),
+      signal: controller.signal,
+    });
+    await flush();
+
+    const [passed] = mockedNative().showActionSheetWithOptions.mock
+      .calls[0]! as [{ sheetId: number }];
+    expect(passed).not.toHaveProperty('signal');
+    expect(typeof passed.sheetId).toBe('number');
+
+    controller.abort();
+    expect(mockedNative().dismissSheet).toHaveBeenCalledWith(passed.sheetId);
+
+    pending.resolve(-2);
+    await expect(result).resolves.toEqual({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+    });
+  });
+
+  it('gives each sheet its own id, and none without a signal', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('ios');
+    const { signal } = new AbortController();
+
+    await showActionSheetWithOptions({ options: buttons('A') });
+    await showActionSheetWithOptions({ options: buttons('A'), signal });
+    await showPromptWithOptions({ options: buttons('OK'), signal });
+
+    const sheets = mockedNative().showActionSheetWithOptions.mock.calls;
+    const prompts = mockedNative().showPromptWithOptions.mock.calls;
+    expect(sheets[0]![0]).not.toHaveProperty('sheetId');
+    expect(prompts[0]![0]).not.toHaveProperty('signal');
+    expect((prompts[0]![0] as { sheetId: number }).sheetId).not.toBe(
+      (sheets[1]![0] as { sheetId: number }).sheetId
+    );
+  });
+
+  it('shows nothing for an already aborted signal', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('android');
+    const controller = new AbortController();
+    controller.abort();
+    const onShow = jest.fn();
+
+    await expect(
+      showActionSheetWithOptions({
+        options: buttons('A'),
+        signal: controller.signal,
+        onShow,
+      })
+    ).resolves.toEqual({ reason: 'dismissed', buttonIndex: undefined });
+    await expect(
+      showPromptWithOptions({
+        options: buttons('OK'),
+        signal: controller.signal,
+        defaultValue: 'Draft',
+        type: 'login-password',
+      })
+    ).resolves.toEqual({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+      text: 'Draft',
+      password: '',
+    });
+
+    expect(mockedNative().showActionSheetWithOptions).not.toHaveBeenCalled();
+    expect(mockedNative().showPromptWithOptions).not.toHaveBeenCalled();
+    expect(onShow).not.toHaveBeenCalled();
+  });
+
+  it('shows nothing when aborted while the anchor is being measured', async () => {
+    const { showActionSheetWithOptions } = loadIndex('ios');
+    const controller = new AbortController();
+    let answer!: (x: number, y: number, w: number, h: number) => void;
+
+    const result = showActionSheetWithOptions({
+      options: buttons('A'),
+      signal: controller.signal,
+      anchor: {
+        measureInWindow: (callback) => {
+          answer = callback;
+        },
+      },
+    });
+    controller.abort();
+    answer(1, 2, 3, 4);
+
+    await expect(result).resolves.toEqual({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+    });
+    expect(mockedNative().showActionSheetWithOptions).not.toHaveBeenCalled();
+    expect(mockedNative().dismissSheet).not.toHaveBeenCalled();
+  });
+
+  it('stops listening once the sheet has resolved', async () => {
+    const { showActionSheetWithOptions, showPromptWithOptions } =
+      loadIndex('android');
+    const controller = new AbortController();
+
+    await showActionSheetWithOptions({
+      options: buttons('A'),
+      signal: controller.signal,
+    });
+    await showPromptWithOptions({
+      options: buttons('OK'),
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    expect(mockedNative().dismissSheet).not.toHaveBeenCalled();
   });
 });

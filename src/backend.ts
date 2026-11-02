@@ -35,3 +35,6 @@ export const showPrompt = (
 export const dismissTop = (): void => nativeModule().dismissActionSheet();
 
 export const dismissAll = (): void => nativeModule().dismissAllActionSheets();
+
+export const dismissSheet = (sheetId: number): void =>
+  nativeModule().dismissSheet(sheetId);

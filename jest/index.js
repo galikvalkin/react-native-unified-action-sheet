@@ -22,6 +22,9 @@
  * As for real, the result carries the value of the button it points at, when
  * that button has one.
  *
+ * An already aborted signal resolves as dismissed and shows nothing, as for
+ * real. Mocked sheets resolve at once, so a later abort has nothing to close.
+ *
  * Each mocked sheet or prompt calls its onShow before resolving, since it
  * always "appears".
  *
@@ -61,7 +64,14 @@ const setNextButtonIndex = (index) => {
   nextButtonIndex = index;
 };
 
+const isAborted = (options) =>
+  Boolean(options && options.signal && options.signal.aborted);
+
 const showActionSheetWithOptions = jest.fn((options) => {
+  if (isAborted(options)) {
+    return Promise.resolve({ reason: 'dismissed', buttonIndex: undefined });
+  }
+
   callOnShow(options);
   const buttons = buttonsOf(options);
   const result = closeResult(buttons, nextButtonIndex);
@@ -80,6 +90,14 @@ const setNextPromptResult = (result) => {
 };
 
 const showPromptWithOptions = jest.fn((options) => {
+  if (isAborted(options)) {
+    return Promise.resolve({
+      reason: 'dismissed',
+      buttonIndex: undefined,
+      text: (options && options.defaultValue) || '',
+    });
+  }
+
   callOnShow(options);
   const buttons = buttonsOf(options);
   const queued = nextPromptResult;

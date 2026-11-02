@@ -29,6 +29,23 @@ A sheet dismissed from code during its present animation did appear, so `onShow`
 
 `dismissActionSheet()` closes the most recently opened sheet, and `dismissAllActionSheets()` closes every open one. Both close prompts too. Both are no-ops when nothing is open, and the dismissed sheets resolve with `reason: 'dismissed'`.
 
+## Closing with a signal
+
+Pass an `AbortSignal` to close one specific sheet or prompt, for example when its screen unmounts:
+
+```ts
+useEffect(() => {
+  const controller = new AbortController();
+  showActionSheetWithOptions({ options, signal: controller.signal });
+
+  return () => controller.abort();
+}, []);
+```
+
+Aborting resolves the promise as `'dismissed'`, with no `onPress`, the same as `dismissActionSheet()`. A prompt keeps its draft in `text`. If the signal is already aborted, nothing is shown, and `onShow` doesn't run. Aborting after the sheet has closed does nothing, and `cancelable: false` doesn't stop it.
+
+Aborting a sheet with others stacked above it closes only that sheet on Android and the web. On iOS, UIKit can't remove a sheet from the middle of a stack, so those above close with it, and also resolve as `'dismissed'`.
+
 ## Platform differences
 
 - **`cancelable: false` turns those gestures off everywhere**, except the one UIKit owns: on iOS's standard action sheet a tap outside presses the cancel button, so a sheet that must not be cancelled should have no cancel button there.

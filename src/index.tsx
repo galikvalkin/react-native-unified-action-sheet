@@ -106,6 +106,8 @@ const toWireOptions = ({
   anchor: _anchor,
   // A function: it travels as the native method's callback argument instead.
   onShow: _onShow,
+  // Stays in JS: only the id it gets from withSheetId crosses the bridge.
+  signal: _signal,
   tintColor,
   cancelButtonTintColor,
   destructiveColor,
@@ -172,6 +174,29 @@ const cancelIndexOf = ({ buttons }: WireButtons): number | undefined => {
   const index = buttons.findIndex((button) => button.style === 'cancel');
 
   return index < 0 ? undefined : index;
+};
+
+let nextSheetId = 1;
+
+/// A sheet with a signal gets an id, so aborting closes that one sheet.
+const withSheetId = <W extends object>(
+  wire: W,
+  signal: AbortSignal | undefined
+): W & { sheetId?: number } =>
+  signal ? { ...wire, sheetId: nextSheetId++ } : wire;
+
+/// Closes the sheet when the signal aborts, until the returned function stops
+/// listening, which the caller does once the sheet has resolved.
+const closeOnAbort = (
+  signal: AbortSignal | undefined,
+  sheetId: number | undefined
+): (() => void) => {
+  if (!signal || sheetId == null) return () => {};
+
+  const onAbort = () => backend.dismissSheet(sheetId);
+  signal.addEventListener('abort', onAbort);
+
+  return () => signal.removeEventListener('abort', onAbort);
 };
 
 /// Native sides only report an index: DISMISSED_BY_API, the cancel button's
@@ -292,7 +317,8 @@ const withValue = <V, R extends CloseResultInterface>(
 export const showActionSheetWithOptions = <const V = unknown,>(
   options: ActionSheetOptionsInterface<V>
 ): Promise<ActionSheetResultInterface<V>> => {
-  const wire = toWireOptions(options);
+  const { signal } = options;
+  const wire = withSheetId(toWireOptions(options), signal);
 
   // -1 and a dismissal index nothing, so optional chaining covers both.
   const press = (
@@ -305,7 +331,7 @@ export const showActionSheetWithOptions = <const V = unknown,>(
     return withValue(result, options.options);
   };
 
-  if (!backend.isSupported) {
+  if (!backend.isSupported || signal?.aborted) {
     return Promise.resolve(DISMISSED);
   }
 
@@ -320,9 +346,16 @@ export const showActionSheetWithOptions = <const V = unknown,>(
   // at most once, when the sheet is on screen.
   const onShow = () => options.onShow?.();
 
-  return withAnchorRect(wire, anchor)
-    .then((withRect) => showWithNativeModule(withRect, onShow))
-    .then(press);
+  return withAnchorRect(wire, anchor).then((withRect) => {
+    // Aborted while the anchor was being measured.
+    if (signal?.aborted) return DISMISSED;
+
+    const stopListening = closeOnAbort(signal, wire.sheetId);
+
+    return showWithNativeModule(withRect, onShow)
+      .then(press)
+      .finally(stopListening);
+  });
 };
 
 export const dismissActionSheet = (): void => {
@@ -348,24 +381,38 @@ export const showPromptWithOptions = <const V = unknown,>(
     type,
     // A function: it travels as the native method's callback argument.
     onShow,
+    // Stays in JS: only the id it gets from withSheetId crosses the bridge.
+    signal,
     tintColor,
     cancelButtonTintColor,
     destructiveColor,
     ...rest
   } = options;
-  const wire: WirePromptOptions = {
-    ...rest,
-    ...toWireButtons(buttons),
-    ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
-    // One field of truth for the native sides: the old boolean maps onto type.
-    type: type ?? (secureTextEntry ? 'secure-text' : 'plain-text'),
-  };
+  const wire: WirePromptOptions & { sheetId?: number } = withSheetId(
+    {
+      ...rest,
+      ...toWireButtons(buttons),
+      ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
+      // One field of truth for the native sides: the old boolean maps onto type.
+      type: type ?? (secureTextEntry ? 'secure-text' : 'plain-text'),
+    },
+    signal
+  );
   const cancelButtonIndex = cancelIndexOf(wire);
   const hasPassword = wire.type === 'login-password';
 
   if (!backend.isSupported) {
     return Promise.resolve({ ...DISMISSED, text: '' });
   }
+  if (signal?.aborted) {
+    return Promise.resolve({
+      ...DISMISSED,
+      text: wire.defaultValue ?? '',
+      ...(hasPassword ? { password: '' } : {}),
+    });
+  }
+
+  const stopListening = closeOnAbort(signal, wire.sheetId);
 
   return backend
     .showPrompt(wire, () => onShow?.())
@@ -396,5 +443,6 @@ export const showPromptWithOptions = <const V = unknown,>(
       }
 
       return result;
-    });
+    })
+    .finally(stopListening);
 };

@@ -39,6 +39,12 @@ export interface BaseOptionsInterface {
   /// tap outside as a tap on its cancel button, so leave the cancel button out
   /// to require a choice there.
   cancelable?: boolean;
+  /// Closes this sheet or prompt when aborted, e.g. from an effect's cleanup
+  /// when its screen unmounts. It resolves as 'dismissed', as with
+  /// dismissActionSheet(), but closes this one rather than the top-most. An
+  /// already aborted signal shows nothing. On iOS, sheets stacked above this one
+  /// close with it, since UIKit can't remove one from the middle of a stack.
+  signal?: AbortSignal;
   /// Called once the sheet or prompt is on screen: on iOS after its
   /// presentation animation, on Android when its window is shown. Called at
   /// most once, before the promise resolves, and not at all if it never

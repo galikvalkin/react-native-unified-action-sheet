@@ -29,6 +29,7 @@ export interface Spec extends TurboModule {
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
       cancelable?: boolean;
+      sheetId?: number;
       presentationStyle?: string;
       anchorAlignment?: string;
       detents?: string[];
@@ -70,11 +71,13 @@ export interface Spec extends TurboModule {
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
       cancelable?: boolean;
+      sheetId?: number;
     },
     onShow: () => void
   ): Promise<{ buttonIndex: number; text: string; password: string }>;
   dismissActionSheet(): void;
   dismissAllActionSheets(): void;
+  dismissSheet(sheetId: number): void;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('UnifiedActionSheet');
