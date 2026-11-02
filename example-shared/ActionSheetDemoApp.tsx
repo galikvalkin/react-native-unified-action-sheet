@@ -1,328 +1,14 @@
-import { Children, forwardRef, useMemo, useRef, useState } from 'react';
-import type { ComponentRef, ReactNode } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import type { ComponentRef } from 'react';
+import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import type { Pressable } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import {
-  dismissActionSheet,
-  dismissAllActionSheets,
-  showActionSheetWithOptions,
-  showPromptWithOptions,
-} from 'react-native-unified-action-sheet';
 
-import type { ActionSheetOptionsInterface } from 'react-native-unified-action-sheet';
-
-interface DemoCase {
-  label: string;
-  options: ActionSheetOptionsInterface;
-}
-
-/// Every button carries an onPress, so the demo never matches on an index. The
-/// cancel buttons have one too: a backdrop tap resolves the cancel button, so
-/// its handler runs even though the row itself was not tapped.
-/// 'Erase forever' → 'demo-erase-forever'.
-const toTestID = (label: string) =>
-  `demo-${label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')}`;
-
-const buildDemoCases = (report: (message: string) => void): DemoCase[] => {
-  const press = (label: string) => () => report(`onPress: ${label}`);
-  const option = (label: string) => ({ label, onPress: press(label) });
-
-  return [
-    {
-      label: 'Title, message, disabled row',
-      options: {
-        title: 'Choose an action',
-        message:
-          'Buttons are objects: style marks the roles, disabled is independent, and onPress runs without matching on the index.',
-        options: [
-          option('Share'),
-          option('Duplicate'),
-          { label: 'Unavailable', disabled: true },
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-      },
-    },
-    {
-      // No onPress at all: show() reports the resolved value instead.
-      label: 'Button values',
-      options: {
-        title: 'Pick a size',
-        message:
-          'Each button has a value, which the result carries, typed from the buttons.',
-        options: [
-          { label: 'Small', value: 's' },
-          { label: 'Medium', value: 'm' },
-          { label: 'Large', value: 'l' },
-          { label: 'Cancel', style: 'cancel', value: 'none' },
-        ],
-      },
-    },
-    {
-      label: 'Destructive + tint colors',
-      options: {
-        title: 'Delete item?',
-        options: [
-          { label: 'Delete', style: 'destructive', onPress: press('Delete') },
-          {
-            label: 'Erase forever',
-            style: 'destructive',
-            // Spoken after the label (bottom sheet and Android; iOS alerts
-            // have no public API for it).
-            accessibilityHint: 'Deletes the item permanently',
-            onPress: press('Erase forever'),
-          },
-          option('Archive'),
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-        tintColor: '#6200EE',
-        cancelButtonTintColor: '#018786',
-      },
-    },
-    {
-      label: 'No cancel button',
-      options: {
-        title: 'Pick one',
-        options: [option('Alpha'), option('Beta'), option('Gamma')],
-      },
-    },
-    {
-      // No cancel button either: on iOS's action sheet a tap outside counts as
-      // the cancel button, which cancelable cannot block.
-      label: 'Not cancelable',
-      options: {
-        title: 'Keep your changes?',
-        message:
-          'cancelable: false. A backdrop tap, back or Escape does nothing; pick a button.',
-        options: [
-          option('Keep'),
-          { ...option('Discard'), style: 'destructive' },
-        ],
-        cancelable: false,
-      },
-    },
-    {
-      label: 'Not cancelable, bottom sheet',
-      options: {
-        title: 'Keep your changes?',
-        message: 'cancelable: false. Swiping down does nothing either.',
-        presentationStyle: 'bottom',
-        options: [
-          option('Keep'),
-          { ...option('Discard'), style: 'destructive' },
-        ],
-        cancelable: false,
-      },
-    },
-    {
-      label: 'Many options (scrolls)',
-      options: {
-        title: 'Long list',
-        options: [
-          ...Array.from({ length: 12 }, (_, i) => option(`Option ${i + 1}`)),
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-      },
-    },
-    {
-      label: 'Centered, custom destructive, centered labels',
-      options: {
-        title: 'Centered presentation',
-        message:
-          'A UIAlertController alert on iOS, a centered dialog on Android. Long list, destructiveColor instead of system red, and buttonTextAlignment: center.',
-        options: [
-          ...Array.from({ length: 10 }, (_, i) => option(`Option ${i + 1}`)),
-          {
-            label: 'Remove forever',
-            style: 'destructive',
-            onPress: press('Remove forever'),
-          },
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-        destructiveColor: '#FF6D00',
-        presentationStyle: 'centered',
-        buttonTextAlignment: 'center',
-      },
-    },
-    {
-      label: 'Bottom sheet',
-      options: {
-        title: 'Bottom sheet',
-        message:
-          'A native sheet on iOS; a Material bottom sheet on Android when the app enables Material, which example/ does and example-legacy/ does not (there it falls back to a centered dialog, with a dev warning).',
-        options: [
-          option('Share'),
-          option('Duplicate'),
-          { label: 'Delete', style: 'destructive', onPress: press('Delete') },
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-        presentationStyle: 'bottom',
-      },
-    },
-    {
-      label: 'Bottom sheet, long list (drag to expand)',
-      options: {
-        title: 'Long bottom sheet',
-        message:
-          'This opens part-way; drag it up to see every row, with Cancel last.',
-        options: [
-          ...Array.from({ length: 16 }, (_, i) => option(`Option ${i + 1}`)),
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-        presentationStyle: 'bottom',
-      },
-    },
-    {
-      label: 'Bottom sheet, fits then expands (detents)',
-      options: {
-        title: 'Detents',
-        message:
-          "detents: ['auto', 'large'] opens at its own height, like a short list, and still drags up to full height.",
-        options: [
-          option('Share'),
-          option('Duplicate'),
-          option('Move'),
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-        presentationStyle: 'bottom',
-        detents: ['auto', 'large'],
-      },
-    },
-    {
-      label: 'Preferred button (centered)',
-      options: {
-        title: 'Unsaved changes',
-        message:
-          "Save is the preferred button: bold on Android, and iOS's own emphasis (a filled button from iOS 26).",
-        options: [
-          { label: 'Save', preferred: true, onPress: press('Save') },
-          { label: 'Discard', style: 'destructive', onPress: press('Discard') },
-          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
-        ],
-        presentationStyle: 'centered',
-      },
-    },
-  ];
-};
-
-const Section = ({
-  title,
-  defaultExpanded = false,
-  children,
-}: {
-  title: string;
-  defaultExpanded?: boolean;
-  children: ReactNode;
-}) => {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  const count = Children.count(children);
-  const palette = usePalette();
-
-  return (
-    <View style={styles.section}>
-      <Pressable
-        style={styles.sectionHeader}
-        onPress={() => setExpanded((open) => !open)}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        accessibilityLabel={`${title}, ${count} cases`}
-      >
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>
-          {title}
-        </Text>
-        <Text style={[styles.sectionMeta, { color: palette.text }]}>
-          {expanded ? '\u25be' : `${count}  \u25b8`}
-        </Text>
-      </Pressable>
-      {/* Unmounted rather than hidden while collapsed. The anchored case
-          measures its own button's ref, and a ref to an off-screen view would
-          report a zero rect rather than simply being unavailable. */}
-      {expanded ? children : null}
-    </View>
-  );
-};
-
-/// The screen follows the system appearance, like the sheets it opens. Without
-/// explicit colors, iOS dark mode renders default black text on its black
-/// window background.
-const palettes = {
-  light: {
-    background: '#FFFFFF',
-    text: '#1B1B1B',
-    secondaryText: '#444444',
-    border: '#00000022',
-    card: '#FFFFFF',
-    // iOS systemBlue and systemIndigo, as colored text on a tint of the same
-    // color: UIButton's "tinted" style.
-    tint: '#007AFF',
-    tintFill: 'rgba(0, 122, 255, 0.12)',
-    altTint: '#5856D6',
-    altTintFill: 'rgba(88, 86, 214, 0.12)',
-  },
-  dark: {
-    background: '#121212',
-    text: '#F2F2F2',
-    secondaryText: '#BBBBBB',
-    border: '#FFFFFF22',
-    card: '#1E1E1E',
-    tint: '#0A84FF',
-    tintFill: 'rgba(10, 132, 255, 0.2)',
-    altTint: '#5E5CE6',
-    altTintFill: 'rgba(94, 92, 230, 0.24)',
-  },
-};
-
-const usePalette = () =>
-  useColorScheme() === 'dark' ? palettes.dark : palettes.light;
-
-/// forwardRef, because the anchored case measures this button's own ref.
-const DemoButton = forwardRef<
-  ComponentRef<typeof Pressable>,
-  { label: string; onPress: () => void; tone?: 'alt' }
->(({ label, onPress, tone }, ref) => {
-  const palette = usePalette();
-  const alt = tone === 'alt';
-
-  return (
-    <Pressable
-      ref={ref}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: alt ? palette.altTintFill : palette.tintFill },
-        // Dims while held, like a UIKit button.
-        pressed && styles.buttonPressed,
-      ]}
-      onPress={onPress}
-    >
-      <Text
-        style={[
-          styles.buttonText,
-          { color: alt ? palette.altTint : palette.tint },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-});
-
-DemoButton.displayName = 'DemoButton';
-
-const delay = (ms: number) =>
-  new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
+import { DemoButton, DemoModal, Section } from './components';
+import { buildDemoCases } from './demoCases';
+import { createPromptActions } from './promptActions';
+import { createSheetActions } from './sheetActions';
+import { palettes, usePalette } from './theme';
 
 export default function ActionSheetDemoApp() {
   const [lastResult, setLastResult] = useState<string>('none yet');
@@ -331,236 +17,11 @@ export default function ActionSheetDemoApp() {
   const anchorRef = useRef<ComponentRef<typeof Pressable> | null>(null);
 
   const demoCases = useMemo(() => buildDemoCases(setLastResult), []);
-
-  /// A button's own onPress reports what ran, so this only has to cover the
-  /// outcomes that press no button: a programmatic dismiss, and a cancel
-  /// gesture (-1) on a sheet with no cancel button.
-  const show = async (demo: DemoCase) => {
-    const result = await showActionSheetWithOptions({
-      ...demo.options,
-      // Every row gets a testID for end-to-end tests, e.g. 'demo-share'.
-      options: demo.options.options.map((button) => ({
-        ...button,
-        testID: button.testID ?? toTestID(button.label),
-      })),
-      // Overwritten by the button's own onPress once one is tapped.
-      onShow: () => setLastResult(`${demo.label} → shown`),
-      // The sheet's own id, e.g. 'demo-bottom-sheet-sheet', to wait for it.
-      testID: `${toTestID(demo.label)}-sheet`,
-    });
-
-    if (result.reason === 'dismissed' || result.buttonIndex < 0) {
-      setLastResult(`${demo.label} → ${result.reason}, no button`);
-    } else if (result.value !== undefined) {
-      setLastResult(
-        `${demo.label} → ${result.reason}, value ${JSON.stringify(result.value)}`
-      );
-    }
-  };
-
-  const showTwice = () => {
-    const first = demoCases[0]!;
-    const second = demoCases[1]!;
-    show(first);
-    // Rapid double-open: the second sheet must dismiss the first one and the
-    // first promise must still resolve exactly once (with its cancel index).
-    setTimeout(() => show(second), 400);
-  };
-
-  const showTwoAndDismissAll = async () => {
-    // Awaits both sheets so the result line reports what actually resolved,
-    // instead of being overwritten by their promises settling afterwards.
-    const first = showActionSheetWithOptions(demoCases[0]!.options);
-    await delay(400);
-    const second = showActionSheetWithOptions(demoCases[1]!.options);
-
-    await delay(1400);
-    dismissAllActionSheets();
-
-    const results = await Promise.all([first, second]);
-    setLastResult(
-      results.every((result) => result.reason === 'dismissed')
-        ? 'Dismiss all → both dismissed'
-        : `Dismiss all → unexpected ${results.map((r) => r.reason).join(', ')}`
-    );
-  };
-
-  const showAndDismiss = async () => {
-    // dismissActionSheet() closes the top-most sheet, which resolves as
-    // 'dismissed', with no index.
-    setTimeout(() => dismissActionSheet(), 1500);
-
-    const result = await showActionSheetWithOptions({
-      title: 'Auto-dismissed',
-      message: 'Closing in 1.5s via dismissActionSheet().',
-      options: [
-        {
-          label: 'Share',
-          onPress: () => setLastResult('Auto-dismiss → Share (beat the timer)'),
-        },
-        {
-          label: 'Duplicate',
-          onPress: () =>
-            setLastResult('Auto-dismiss → Duplicate (beat the timer)'),
-        },
-        { label: 'Cancel', style: 'cancel' },
-      ],
-    });
-
-    // Only the programmatic dismiss reaches here; a tapped button reported
-    // itself through onPress.
-    if (result.reason === 'dismissed') {
-      setLastResult('Auto-dismiss → dismissed');
-    }
-  };
-
-  const showAnchored = async () => {
-    // A menu-style popup attached to this button. The ref is measured by the
-    // library; without a measurable anchor it falls back to a centered dialog.
-    const result = await showActionSheetWithOptions({
-      title: 'Anchored presentation',
-      options: [
-        { label: 'Share', onPress: () => setLastResult('Anchored → Share') },
-        {
-          label: 'Duplicate',
-          onPress: () => setLastResult('Anchored → Duplicate'),
-        },
-        {
-          label: 'Cancel',
-          style: 'cancel',
-          onPress: () => setLastResult('Anchored → Cancel'),
-        },
-      ],
-      presentationStyle: 'anchored',
-      anchor: anchorRef,
-      anchorAlignment: 'center',
-    });
-    if (result.reason === 'dismissed' || result.buttonIndex < 0) {
-      setLastResult(`Anchored → ${result.reason}, no button`);
-    }
-  };
-
-  const showPrompt = async () => {
-    // The gap this fills: React Native's own Alert.prompt is iOS-only and does
-    // nothing at all on Android.
-    const result = await showPromptWithOptions({
-      onShow: () => setLastResult('Prompt → shown'),
-      testID: 'demo-rename-prompt',
-      fieldTestID: 'demo-rename-field',
-      title: 'Rename item',
-      message: 'Type a new name.',
-      placeholder: 'New name',
-      defaultValue: 'Untitled',
-      options: [
-        {
-          label: 'Save',
-          preferred: true,
-          onPress: ({ text }) => setLastResult(`Prompt → saved “${text}”`),
-        },
-        {
-          label: 'Delete',
-          style: 'destructive',
-          onPress: () => setLastResult('Prompt → Delete'),
-        },
-        {
-          label: 'Cancel',
-          style: 'cancel',
-          onPress: ({ text }) =>
-            setLastResult(`Prompt → cancelled, draft was “${text}”`),
-        },
-      ],
-    });
-
-    if (result.reason === 'dismissed') {
-      setLastResult(`Prompt → dismissed from code, draft was “${result.text}”`);
-    }
-  };
-
-  const showSecurePrompt = async () => {
-    const result = await showPromptWithOptions({
-      title: 'Enter passcode',
-      placeholder: 'Passcode',
-      type: 'secure-text',
-      keyboardType: 'numeric',
-      options: [
-        {
-          label: 'Unlock',
-          requiresText: true,
-          onPress: ({ text }) =>
-            setLastResult(`Secure prompt → ${text.length} digits entered`),
-        },
-        {
-          label: 'Cancel',
-          style: 'cancel',
-          onPress: () => setLastResult('Secure prompt → cancelled'),
-        },
-      ],
-    });
-
-    if (result.reason === 'dismissed') {
-      setLastResult('Secure prompt → dismissed');
-    }
-  };
-
-  const showLoginPrompt = async () => {
-    // Two fields, as with React Native's Alert.prompt 'login-password'. Sign in
-    // stays disabled until both are filled, and is the preferred button, so
-    // the keyboard's return key presses it.
-    await showPromptWithOptions({
-      title: 'Sign in',
-      type: 'login-password',
-      placeholder: 'Email',
-      passwordPlaceholder: 'Password',
-      fieldTestID: 'demo-sign-in-email',
-      passwordFieldTestID: 'demo-sign-in-password',
-      keyboardType: 'email-address',
-      options: [
-        {
-          label: 'Sign in',
-          preferred: true,
-          requiresText: true,
-          onPress: ({ text, password }) =>
-            setLastResult(
-              `Sign in → ${text}, ${password?.length ?? 0}-character password`
-            ),
-        },
-        {
-          label: 'Cancel',
-          style: 'cancel',
-          onPress: () => setLastResult('Sign in → cancelled'),
-        },
-      ],
-    });
-  };
-
-  const showFromModal = async () => {
-    // A Modal renders in its own window, above the activity. The
-    // sheet is a dialog owned by the activity, so this is where a z-order bug
-    // would show up: the sheet must appear ON TOP of the still-open modal,
-    // not behind it.
-    const result = await showActionSheetWithOptions({
-      title: 'Opened from inside a modal',
-      message: 'This sheet must render above the modal, which stays open.',
-      options: [
-        {
-          label: 'Share',
-          onPress: () => setLastResult('Sheet inside modal → Share'),
-        },
-        {
-          label: 'Duplicate',
-          onPress: () => setLastResult('Sheet inside modal → Duplicate'),
-        },
-        {
-          label: 'Cancel',
-          style: 'cancel',
-          onPress: () => setLastResult('Sheet inside modal → Cancel'),
-        },
-      ],
-    });
-    if (result.reason === 'dismissed' || result.buttonIndex < 0) {
-      setLastResult(`Sheet inside modal → ${result.reason}, no button`);
-    }
-  };
+  const sheets = useMemo(
+    () => createSheetActions(setLastResult, demoCases, anchorRef),
+    [demoCases]
+  );
+  const prompts = useMemo(() => createPromptActions(setLastResult), []);
 
   return (
     <SafeAreaProvider>
@@ -591,7 +52,7 @@ export default function ActionSheetDemoApp() {
               <DemoButton
                 key={demo.label}
                 label={demo.label}
-                onPress={() => show(demo)}
+                onPress={() => sheets.show(demo)}
               />
             ))}
           </Section>
@@ -599,17 +60,17 @@ export default function ActionSheetDemoApp() {
           <Section title="Prompts">
             <DemoButton
               label="Prompt with a text field"
-              onPress={showPrompt}
+              onPress={prompts.showPrompt}
               tone="alt"
             />
             <DemoButton
               label="Secure numeric prompt"
-              onPress={showSecurePrompt}
+              onPress={prompts.showSecurePrompt}
               tone="alt"
             />
             <DemoButton
               label="Sign in (login and password)"
-              onPress={showLoginPrompt}
+              onPress={prompts.showLoginPrompt}
               tone="alt"
             />
           </Section>
@@ -618,7 +79,7 @@ export default function ActionSheetDemoApp() {
             <DemoButton
               ref={anchorRef}
               label="Anchored to this button"
-              onPress={showAnchored}
+              onPress={sheets.showAnchored}
               tone="alt"
             />
           </Section>
@@ -626,17 +87,17 @@ export default function ActionSheetDemoApp() {
           <Section title="Stacking and dismissal">
             <DemoButton
               label="Rapid double-open"
-              onPress={showTwice}
+              onPress={sheets.showTwice}
               tone="alt"
             />
             <DemoButton
               label="Open two, then dismiss all"
-              onPress={showTwoAndDismissAll}
+              onPress={sheets.showTwoAndDismissAll}
               tone="alt"
             />
             <DemoButton
               label="Open then dismiss programmatically"
-              onPress={showAndDismiss}
+              onPress={sheets.showAndDismiss}
               tone="alt"
             />
           </Section>
@@ -649,32 +110,11 @@ export default function ActionSheetDemoApp() {
             />
           </Section>
         </ScrollView>
-        <Modal
-          transparent
-          animationType="fade"
+        <DemoModal
           visible={isModalVisible}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={[styles.modalCard, { backgroundColor: palette.card }]}>
-              <Text style={[styles.modalTitle, { color: palette.text }]}>
-                A Modal
-              </Text>
-              <Text
-                style={[styles.modalText, { color: palette.secondaryText }]}
-              >
-                Open the sheet from here. It must appear above this modal, and
-                this modal must still be open underneath once the sheet closes.
-              </Text>
-              <DemoButton label="Open action sheet" onPress={showFromModal} />
-              <DemoButton
-                label="Close modal"
-                onPress={() => setModalVisible(false)}
-                tone="alt"
-              />
-            </View>
-          </View>
-        </Modal>
+          onOpenSheet={sheets.showFromModal}
+          onClose={() => setModalVisible(false)}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -705,57 +145,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     opacity: 0.7,
-  },
-  section: {
-    gap: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  sectionMeta: {
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.45,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    opacity: 0.45,
-  },
-  button: {
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-  },
-  buttonPressed: {
-    opacity: 0.55,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  },
-  modalCard: {
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  modalText: {
-    fontSize: 14,
   },
 });
