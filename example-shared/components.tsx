@@ -33,15 +33,11 @@ export const Section = ({
           {expanded ? '\u25be' : `${count}  \u25b8`}
         </Text>
       </Pressable>
-      {/* Unmounted rather than hidden while collapsed. The anchored case
-          measures its own button's ref, and a ref to an off-screen view would
-          report a zero rect rather than simply being unavailable. */}
       {expanded ? children : null}
     </View>
   );
 };
 
-/// forwardRef, because the anchored case measures this button's own ref.
 export const DemoButton = forwardRef<
   ComponentRef<typeof Pressable>,
   { label: string; onPress: () => void; tone?: 'alt' }
@@ -55,7 +51,6 @@ export const DemoButton = forwardRef<
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: alt ? palette.altTintFill : palette.tintFill },
-        // Dims while held, like a UIKit button.
         pressed && styles.buttonPressed,
       ]}
       onPress={onPress}
@@ -74,7 +69,6 @@ export const DemoButton = forwardRef<
 
 DemoButton.displayName = 'DemoButton';
 
-/// The Interop case: a real Modal to open a sheet from.
 export const DemoModal = ({
   visible,
   onOpenSheet,

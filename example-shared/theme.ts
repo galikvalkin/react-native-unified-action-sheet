@@ -1,8 +1,5 @@
 import { useColorScheme } from 'react-native';
 
-/// The screen follows the system appearance, like the sheets it opens. Without
-/// explicit colors, iOS dark mode renders default black text on its black
-/// window background.
 export const palettes = {
   light: {
     background: '#FFFFFF',
@@ -10,8 +7,6 @@ export const palettes = {
     secondaryText: '#444444',
     border: '#00000022',
     card: '#FFFFFF',
-    // iOS systemBlue and systemIndigo, as colored text on a tint of the same
-    // color: UIButton's "tinted" style.
     tint: '#007AFF',
     tintFill: 'rgba(0, 122, 255, 0.12)',
     altTint: '#5856D6',

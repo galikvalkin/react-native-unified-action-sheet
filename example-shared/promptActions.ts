@@ -2,8 +2,6 @@ import { showPromptWithOptions } from 'react-native-unified-action-sheet';
 
 export const createPromptActions = (report: (message: string) => void) => {
   const showPrompt = async () => {
-    // The gap this fills: React Native's own Alert.prompt is iOS-only and does
-    // nothing at all on Android.
     const result = await showPromptWithOptions({
       onShow: () => report('Prompt → shown'),
       testID: 'demo-rename-prompt',
@@ -64,9 +62,6 @@ export const createPromptActions = (report: (message: string) => void) => {
   };
 
   const showLoginPrompt = async () => {
-    // Two fields, as with React Native's Alert.prompt 'login-password'. Sign in
-    // stays disabled until both are filled, and is the preferred button, so
-    // the keyboard's return key presses it.
     await showPromptWithOptions({
       title: 'Sign in',
       type: 'login-password',

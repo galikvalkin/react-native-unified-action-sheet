@@ -5,16 +5,12 @@ export interface DemoCase {
   options: ActionSheetOptionsInterface;
 }
 
-/// 'Erase forever' → 'demo-erase-forever'.
 export const toTestID = (label: string) =>
   `demo-${label
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')}`;
 
-/// Every button carries an onPress, so the demo never matches on an index. The
-/// cancel buttons have one too: a backdrop tap resolves the cancel button, so
-/// its handler runs even though the row itself was not tapped.
 export const buildDemoCases = (
   report: (message: string) => void
 ): DemoCase[] => {
@@ -37,7 +33,6 @@ export const buildDemoCases = (
       },
     },
     {
-      // No onPress at all: show() reports the resolved value instead.
       label: 'Button values',
       options: {
         title: 'Pick a size',
@@ -60,8 +55,6 @@ export const buildDemoCases = (
           {
             label: 'Erase forever',
             style: 'destructive',
-            // Spoken after the label (bottom sheet and Android; iOS alerts
-            // have no public API for it).
             accessibilityHint: 'Deletes the item permanently',
             onPress: press('Erase forever'),
           },
@@ -80,8 +73,6 @@ export const buildDemoCases = (
       },
     },
     {
-      // No cancel button either: on iOS's action sheet a tap outside counts as
-      // the cancel button, which cancelable cannot block.
       label: 'Not cancelable',
       options: {
         title: 'Keep your changes?',

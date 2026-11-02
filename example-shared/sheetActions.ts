@@ -19,20 +19,14 @@ export const createSheetActions = (
   demoCases: DemoCase[],
   anchorRef: RefObject<ComponentRef<typeof Pressable> | null>
 ) => {
-  /// A button's own onPress reports what ran, so this only has to cover the
-  /// outcomes that press no button: a programmatic dismiss, and a cancel
-  /// gesture (-1) on a sheet with no cancel button.
   const show = async (demo: DemoCase) => {
     const result = await showActionSheetWithOptions({
       ...demo.options,
-      // Every row gets a testID for end-to-end tests, e.g. 'demo-share'.
       options: demo.options.options.map((button) => ({
         ...button,
         testID: button.testID ?? toTestID(button.label),
       })),
-      // Overwritten by the button's own onPress once one is tapped.
       onShow: () => report(`${demo.label} → shown`),
-      // The sheet's own id, e.g. 'demo-bottom-sheet-sheet', to wait for it.
       testID: `${toTestID(demo.label)}-sheet`,
     });
 
@@ -49,14 +43,10 @@ export const createSheetActions = (
     const first = demoCases[0]!;
     const second = demoCases[1]!;
     show(first);
-    // Rapid double-open: the second sheet must dismiss the first one and the
-    // first promise must still resolve exactly once (with its cancel index).
     setTimeout(() => show(second), 400);
   };
 
   const showTwoAndDismissAll = async () => {
-    // Awaits both sheets so the result line reports what actually resolved,
-    // instead of being overwritten by their promises settling afterwards.
     const first = showActionSheetWithOptions(demoCases[0]!.options);
     await delay(400);
     const second = showActionSheetWithOptions(demoCases[1]!.options);
@@ -73,8 +63,6 @@ export const createSheetActions = (
   };
 
   const showAndDismiss = async () => {
-    // dismissActionSheet() closes the top-most sheet, which resolves as
-    // 'dismissed', with no index.
     setTimeout(() => dismissActionSheet(), 1500);
 
     const result = await showActionSheetWithOptions({
@@ -93,16 +81,12 @@ export const createSheetActions = (
       ],
     });
 
-    // Only the programmatic dismiss reaches here; a tapped button reported
-    // itself through onPress.
     if (result.reason === 'dismissed') {
       report('Auto-dismiss → dismissed');
     }
   };
 
   const showAnchored = async () => {
-    // A menu-style popup attached to this button. The ref is measured by the
-    // library; without a measurable anchor it falls back to a centered dialog.
     const result = await showActionSheetWithOptions({
       title: 'Anchored presentation',
       options: [
@@ -127,10 +111,6 @@ export const createSheetActions = (
   };
 
   const showFromModal = async () => {
-    // A Modal renders in its own window, above the activity. The
-    // sheet is a dialog owned by the activity, so this is where a z-order bug
-    // would show up: the sheet must appear ON TOP of the still-open modal,
-    // not behind it.
     const result = await showActionSheetWithOptions({
       title: 'Opened from inside a modal',
       message: 'This sheet must render above the modal, which stays open.',

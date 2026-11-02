@@ -33,8 +33,6 @@ export default function ActionSheetDemoApp() {
             palette === palettes.dark ? 'light-content' : 'dark-content'
           }
         />
-        {/* Outside the ScrollView so the result of whatever you just tapped
-          stays visible instead of scrolling away with the buttons. */}
         <View style={[styles.header, { borderBottomColor: palette.border }]}>
           <Text style={[styles.heading, { color: palette.text }]}>
             Unified Action Sheet
