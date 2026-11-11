@@ -26,6 +26,7 @@ export interface Spec extends TurboModule {
       tintColor?: number;
       cancelButtonTintColor?: number;
       destructiveColor?: number;
+      backgroundColor?: number;
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
       cancelable?: boolean;
@@ -67,6 +68,7 @@ export interface Spec extends TurboModule {
       tintColor?: number;
       cancelButtonTintColor?: number;
       destructiveColor?: number;
+      backgroundColor?: number;
       buttonTextAlignment?: string;
       userInterfaceStyle?: string;
       cancelable?: boolean;

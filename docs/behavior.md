@@ -36,4 +36,4 @@ A sheet dismissed from code during its present animation did appear, so `onShow`
 - **On iPad, a popover hides the cancel row**, since tapping outside already cancels. The index you receive is unaffected.
 - **Sheets stack.** Opening one over another puts it on top, and each resolves its own promise. Opening a sheet over a `Modal` does not dismiss the modal.
 - **On the web**, Escape and a backdrop click always cancel, whatever the style. How sheets look and behave there is in [Web](web.md).
-- **Light or dark follows the system setting** unless `userInterfaceStyle` forces one, chosen when the sheet opens. It uses its own palette, so it looks the same in any host app.
+- **Light or dark follows the system setting** unless `userInterfaceStyle` forces one, chosen when the sheet opens. It uses its own palette, so it looks the same in any host app; `backgroundColor` swaps its surface for your app's own.

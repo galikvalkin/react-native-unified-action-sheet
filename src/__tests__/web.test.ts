@@ -189,6 +189,18 @@ describe('web sheets', () => {
     );
   });
 
+  it('draws the surface in backgroundColor, else the palette', () => {
+    sheets.showSheet(sheet({ backgroundColor: 0xffeae6df }), () => {});
+    expect(panel().style.getPropertyValue('--uas-surface')).toBe(
+      'rgba(234, 230, 223, 1)'
+    );
+    sheets.dismissAll();
+    jest.runOnlyPendingTimers();
+
+    sheets.showSheet(sheet({ userInterfaceStyle: 'dark' }), () => {});
+    expect(panel().style.getPropertyValue('--uas-surface')).toBe('#2B2930');
+  });
+
   it('dismisses the top sheet, or all of them, as -2', async () => {
     const first = sheets.showSheet(sheet(), () => {});
     const second = sheets.showSheet(sheet(), () => {});

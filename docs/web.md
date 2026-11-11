@@ -35,7 +35,7 @@ export default {
 
 ## How it looks
 
-The sheet uses the Android dialog's palette, sizes and spacing, in light or dark to match `userInterfaceStyle` or the system setting. It renders on top of the page, above anything else, including an open `Modal`, and blocks page scrolling while it is open.
+The sheet uses the Android dialog's palette, sizes and spacing, in light or dark to match `userInterfaceStyle` or the system setting. `backgroundColor` replaces its surface. It renders on top of the page, above anything else, including an open `Modal`, and blocks page scrolling while it is open.
 
 | `presentationStyle` | Web |
 | --- | --- |

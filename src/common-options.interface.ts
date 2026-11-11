@@ -31,6 +31,12 @@ export interface BaseOptionsInterface {
   tintColor?: string;
   cancelButtonTintColor?: string;
   destructiveColor?: string;
+  /// The sheet's surface, e.g. to match the app's own background. Android's
+  /// every style, the iOS bottom sheet and the web; iOS alerts, action sheets
+  /// and prompts ignore it, since UIAlertController has no public API for it.
+  /// Text colors still follow userInterfaceStyle, so pick the one that reads
+  /// on this color.
+  backgroundColor?: string;
   userInterfaceStyle?: 'light' | 'dark';
   /// false keeps the sheet or prompt open until a button is pressed: a
   /// backdrop tap, back, a swipe down and Escape on the web do nothing.

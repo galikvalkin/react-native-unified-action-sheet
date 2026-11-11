@@ -186,5 +186,37 @@ export const buildDemoCases = (
         presentationStyle: 'centered',
       },
     },
+    {
+      label: 'Custom background, light',
+      options: {
+        title: 'Choose a language',
+        message:
+          "backgroundColor matches the app's own surface; userInterfaceStyle keeps the text readable on it. iOS alerts ignore it.",
+        options: [
+          option('English'),
+          option('French'),
+          option('Ukrainian'),
+          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
+        ],
+        backgroundColor: '#EAE6DF',
+        userInterfaceStyle: 'light',
+        tintColor: '#1565C0',
+      },
+    },
+    {
+      label: 'Custom background, dark bottom sheet',
+      options: {
+        title: 'Choose a language',
+        options: [
+          option('English'),
+          option('French'),
+          option('Ukrainian'),
+          { label: 'Cancel', style: 'cancel', onPress: press('Cancel') },
+        ],
+        backgroundColor: '#1E1E1E',
+        userInterfaceStyle: 'dark',
+        presentationStyle: 'bottom',
+      },
+    },
   ];
 };

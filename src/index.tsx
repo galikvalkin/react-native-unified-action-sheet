@@ -65,6 +65,7 @@ type WireColors = {
   tintColor?: number;
   cancelButtonTintColor?: number;
   destructiveColor?: number;
+  backgroundColor?: number;
 };
 
 type ColorKey = keyof WireColors;
@@ -78,20 +79,21 @@ type WireOptions = Omit<
     anchorRect?: { x: number; y: number; width: number; height: number };
   };
 
+const COLOR_KEYS = [
+  'tintColor',
+  'cancelButtonTintColor',
+  'destructiveColor',
+  'backgroundColor',
+] as const satisfies readonly ColorKey[];
+
 /// Parses colors the way React Native does everywhere else, so '#RRGGBBAA',
 /// '#RGB', 'rgba(...)' and named colors mean the same on both platforms.
 /// processColor yields an ARGB number; anything it can't parse is dropped.
-const toWireColors = (colors: {
-  tintColor?: string;
-  cancelButtonTintColor?: string;
-  destructiveColor?: string;
-}): WireColors => {
+const toWireColors = (
+  colors: Partial<Record<ColorKey, string>>
+): WireColors => {
   const wire: WireColors = {};
-  for (const key of [
-    'tintColor',
-    'cancelButtonTintColor',
-    'destructiveColor',
-  ] as const) {
+  for (const key of COLOR_KEYS) {
     const processed = colors[key] == null ? null : processColor(colors[key]);
     if (typeof processed === 'number') wire[key] = processed;
   }
@@ -109,11 +111,17 @@ const toWireOptions = ({
   tintColor,
   cancelButtonTintColor,
   destructiveColor,
+  backgroundColor,
   ...rest
 }: ActionSheetOptionsInterface): WireOptions => ({
   ...rest,
   ...toWireButtons(options),
-  ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
+  ...toWireColors({
+    tintColor,
+    cancelButtonTintColor,
+    destructiveColor,
+    backgroundColor,
+  }),
 });
 
 type WirePromptOptions = Omit<
@@ -351,12 +359,18 @@ export const showPromptWithOptions = <const V = unknown,>(
     tintColor,
     cancelButtonTintColor,
     destructiveColor,
+    backgroundColor,
     ...rest
   } = options;
   const wire: WirePromptOptions = {
     ...rest,
     ...toWireButtons(buttons),
-    ...toWireColors({ tintColor, cancelButtonTintColor, destructiveColor }),
+    ...toWireColors({
+      tintColor,
+      cancelButtonTintColor,
+      destructiveColor,
+      backgroundColor,
+    }),
     // One field of truth for the native sides: the old boolean maps onto type.
     type: type ?? (secureTextEntry ? 'secure-text' : 'plain-text'),
   };
