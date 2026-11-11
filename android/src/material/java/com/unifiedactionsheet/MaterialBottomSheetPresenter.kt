@@ -25,7 +25,7 @@ internal object MaterialBottomSheetPresenter : SheetPresenter {
     onSelect: (Dialog, Int) -> Unit,
   ): Dialog {
     val isDark = isDarkAppearance(activity, options.userInterfaceStyle)
-    val palette = paletteFor(isDark)
+    val palette = paletteFor(isDark, options.backgroundColor)
     // A full Material 3 theme rather than an overlay, so the sheet works inside
     // an app whose own theme is plain AppCompat.
     val dialog = BottomSheetDialog(activity, bottomSheetTheme(isDark))

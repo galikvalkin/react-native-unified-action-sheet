@@ -15,6 +15,7 @@ final class BottomSheetViewController: UIViewController {
   private let tintColor: UIColor?
   private let cancelButtonTintColor: UIColor?
   private let destructiveColor: UIColor?
+  private let customBackgroundColor: UIColor?
   /// Set by the presenter once it can resolve the sheet.
   var onSelect: ((Int) -> Void)?
 
@@ -28,7 +29,8 @@ final class BottomSheetViewController: UIViewController {
     cancelRow: Row?,
     tintColor: UIColor?,
     cancelButtonTintColor: UIColor?,
-    destructiveColor: UIColor?
+    destructiveColor: UIColor?,
+    backgroundColor: UIColor?
   ) {
     self.sheetTitle = title
     self.message = message
@@ -37,6 +39,7 @@ final class BottomSheetViewController: UIViewController {
     self.tintColor = tintColor
     self.cancelButtonTintColor = cancelButtonTintColor
     self.destructiveColor = destructiveColor
+    customBackgroundColor = backgroundColor
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -49,8 +52,10 @@ final class BottomSheetViewController: UIViewController {
     super.viewDidLoad()
 
     // From iOS 26 the system draws the sheet's Liquid Glass background; an
-    // opaque color here would cover it.
-    if #available(iOS 26.0, *) {
+    // opaque color here would cover it, so only the app's own color does.
+    if let customBackgroundColor {
+      view.backgroundColor = customBackgroundColor
+    } else if #available(iOS 26.0, *) {
       view.backgroundColor = .clear
     } else {
       view.backgroundColor = .systemBackground

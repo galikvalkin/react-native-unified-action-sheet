@@ -17,6 +17,7 @@ const mockColors: Record<string, number> = {
   '#F00': 0xffff0000,
   'green': 0xff008000,
   '#123456': 0xff123456,
+  '#EAE6DF': 0xffeae6df,
 };
 
 jest.mock('react-native', () => ({
@@ -945,6 +946,7 @@ describe('colors', () => {
       tintColor: '#FF000080',
       cancelButtonTintColor: '#F00',
       destructiveColor: 'green',
+      backgroundColor: '#EAE6DF',
     };
 
     await showActionSheetWithOptions({ options: buttons('A'), ...colors });
@@ -954,6 +956,7 @@ describe('colors', () => {
       tintColor: 0x80ff0000,
       cancelButtonTintColor: 0xffff0000,
       destructiveColor: 0xff008000,
+      backgroundColor: 0xffeae6df,
     };
     expect(
       mockedNative().showActionSheetWithOptions.mock.calls[0]![0]

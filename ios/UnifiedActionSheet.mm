@@ -44,6 +44,9 @@ static NSMutableDictionary *contentPayload(Options &options)
   if (options.destructiveColor()) {
     payload[@"destructiveColor"] = @(*options.destructiveColor());
   }
+  if (options.backgroundColor()) {
+    payload[@"backgroundColor"] = @(*options.backgroundColor());
+  }
   payload[@"userInterfaceStyle"] = options.userInterfaceStyle();
   payload[@"testID"] = options.testID();
   if (options.cancelable()) {

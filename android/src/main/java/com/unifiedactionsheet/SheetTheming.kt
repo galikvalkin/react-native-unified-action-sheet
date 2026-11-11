@@ -43,7 +43,13 @@ internal fun dialogTheme(isDark: Boolean): Int = if (isDark) {
   AppCompatR.style.Theme_AppCompat_Light_Dialog
 }
 
-internal fun paletteFor(isDark: Boolean): SheetPalette = if (isDark) DARK_PALETTE else LIGHT_PALETTE
+/// backgroundColor, when the app sets one, replaces only the surface: text
+/// colors still follow light or dark.
+internal fun paletteFor(isDark: Boolean, backgroundColor: Int?): SheetPalette {
+  val palette = if (isDark) DARK_PALETTE else LIGHT_PALETTE
+
+  return backgroundColor?.let { palette.copy(surface = it) } ?: palette
+}
 
 internal fun selectableItemBackgroundRes(context: Context): Int {
   val outValue = TypedValue()

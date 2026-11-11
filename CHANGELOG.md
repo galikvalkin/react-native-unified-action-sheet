@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `backgroundColor` on sheets and prompts, so a sheet can match the app's own
+  surfaces instead of the library's palette. Every Android style, the web, and
+  the iOS bottom sheet; iOS alerts, action sheets and prompts ignore it, since
+  UIKit has no public API for their background. Text keeps its light or dark
+  colors, so pair it with `userInterfaceStyle`.
+
 ## [0.5.0]
 
 ### Added

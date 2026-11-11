@@ -35,7 +35,7 @@ internal object CenteredDialogPresenter : SheetPresenter {
     onSelect: (Dialog, Int) -> Unit,
   ): Dialog {
     val isDark = isDarkAppearance(activity, options.userInterfaceStyle)
-    val palette = paletteFor(isDark)
+    val palette = paletteFor(isDark, options.backgroundColor)
     val dialog = AppCompatDialog(activity, dialogTheme(isDark))
     dialog.supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
 
@@ -113,7 +113,7 @@ internal fun buildPromptDialog(
   onSelect: (Dialog, Int, PromptValues) -> Unit,
 ): Pair<Dialog, () -> PromptValues> {
   val isDark = isDarkAppearance(activity, options.userInterfaceStyle)
-  val palette = paletteFor(isDark)
+  val palette = paletteFor(isDark, options.backgroundColor)
   val dialog = AppCompatDialog(activity, dialogTheme(isDark))
   dialog.supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
 
@@ -190,7 +190,7 @@ internal class AnchoredDialogPresenter(private val anchorRect: Rect) : SheetPres
     onSelect: (Dialog, Int) -> Unit,
   ): Dialog {
     val isDark = isDarkAppearance(activity, options.userInterfaceStyle)
-    val palette = paletteFor(isDark)
+    val palette = paletteFor(isDark, options.backgroundColor)
     val dialog = AppCompatDialog(activity, dialogTheme(isDark))
     dialog.supportRequestWindowFeature(Window.FEATURE_NO_TITLE)
 

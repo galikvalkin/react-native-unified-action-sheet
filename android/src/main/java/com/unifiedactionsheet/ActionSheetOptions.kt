@@ -115,6 +115,8 @@ internal interface SheetContent {
   val tintColor: Int?
   val cancelButtonTintColor: Int?
   val destructiveColor: Int?
+  /// Replaces the palette's surface; text keeps the palette's colors.
+  val backgroundColor: Int?
   val buttonTextAlignment: ButtonTextAlignment
   val userInterfaceStyle: ForcedAppearance
   /// The sheet's own id for end-to-end tests, on its dialog content.
@@ -141,6 +143,7 @@ internal data class SheetContentOptions(
   override val tintColor: Int? = null,
   override val cancelButtonTintColor: Int? = null,
   override val destructiveColor: Int? = null,
+  override val backgroundColor: Int? = null,
   override val buttonTextAlignment: ButtonTextAlignment = ButtonTextAlignment.START,
   override val userInterfaceStyle: ForcedAppearance = ForcedAppearance.SYSTEM,
   override val testID: String? = null,
@@ -162,6 +165,7 @@ internal data class SheetContentOptions(
         tintColor = map.optColor("tintColor"),
         cancelButtonTintColor = map.optColor("cancelButtonTintColor"),
         destructiveColor = map.optColor("destructiveColor"),
+        backgroundColor = map.optColor("backgroundColor"),
         buttonTextAlignment = ButtonTextAlignment.fromWire(map.optString("buttonTextAlignment")),
         userInterfaceStyle = ForcedAppearance.fromWire(map.optString("userInterfaceStyle")),
         testID = map.optString("testID")?.takeIf { it.isNotEmpty() },

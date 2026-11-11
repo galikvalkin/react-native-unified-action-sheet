@@ -17,6 +17,7 @@ type Content = Pick<
   | 'tintColor'
   | 'cancelButtonTintColor'
   | 'destructiveColor'
+  | 'backgroundColor'
   | 'buttonTextAlignment'
   | 'userInterfaceStyle'
   | 'testID'
@@ -214,7 +215,10 @@ const open = ({
   if (content.buttonTextAlignment === 'center') {
     panel.classList.add('uas-center-labels');
   }
-  panel.style.setProperty('--uas-surface', palette.surface);
+  panel.style.setProperty(
+    '--uas-surface',
+    cssColor(content.backgroundColor) ?? palette.surface
+  );
   panel.style.setProperty('--uas-primary', palette.primaryText);
   panel.style.setProperty('--uas-secondary', palette.secondaryText);
   panel.style.setProperty('--uas-error', palette.error);

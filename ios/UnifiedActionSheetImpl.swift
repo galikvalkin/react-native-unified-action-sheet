@@ -237,7 +237,8 @@ public class UnifiedActionSheetImpl: NSObject, UIPopoverPresentationControllerDe
       cancelRow: content.buttons.first { $0.isCancel },
       tintColor: content.tintColor,
       cancelButtonTintColor: content.cancelButtonTintColor,
-      destructiveColor: content.destructiveColor
+      destructiveColor: content.destructiveColor,
+      backgroundColor: content.backgroundColor
     )
 
     let presentation = Presentation(
@@ -588,6 +589,9 @@ struct SheetContent {
   let tintColor: UIColor?
   let cancelButtonTintColor: UIColor?
   let destructiveColor: UIColor?
+  /// The bottom sheet's background. UIAlertController has no public API for
+  /// one, so alerts, action sheets and prompts ignore it.
+  let backgroundColor: UIColor?
   let userInterfaceStyle: UIUserInterfaceStyle
   /// The sheet's own accessibilityIdentifier, for end-to-end tests.
   let testID: String?
@@ -604,6 +608,7 @@ struct SheetContent {
     tintColor = Self.color(options["tintColor"])
     cancelButtonTintColor = Self.color(options["cancelButtonTintColor"])
     destructiveColor = Self.color(options["destructiveColor"])
+    backgroundColor = Self.color(options["backgroundColor"])
     switch options["userInterfaceStyle"] as? String {
     case "dark": userInterfaceStyle = .dark
     case "light": userInterfaceStyle = .light
